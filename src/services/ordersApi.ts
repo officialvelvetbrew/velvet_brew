@@ -1,5 +1,6 @@
 import type { Order, OrderStatus, CategoryId, PaymentMethod } from "../types";
 import { SAMPLE_ORDERS } from "../data/sampleOrders";
+import { getAuthToken } from "../services/adminAuth";
 
 /**
  * ---------------------------------------------------------------
@@ -167,7 +168,11 @@ export async function fetchOrders(): Promise<Order[]> {
     );
   }
 
-  const res = await fetch(`${API_BASE}/customer/orders`);
+  const token = getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}/customer/orders`, { headers });
   if (!res.ok) throw new Error("Failed to fetch orders");
   const result = await res.json();
 
@@ -293,13 +298,15 @@ export async function updateOrderStatus(order: Order): Promise<Order | null> {
     return orders[idx];
   }
 
+  const token = getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(
     `${API_BASE}/customer/orders?orderNumber=${order.id}`,
     {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(mapOrderToBackendPayload(order)),
     }
   );
@@ -325,9 +332,13 @@ export async function updateOrderPaid(order: Order): Promise<Order | null> {
     return orders[idx];
   }
 
+  const token = getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/customer/orders?orderNumber=${order.id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(mapOrderToBackendPayload(order)),
   });
   if (!res.ok) throw new Error("Failed to update payment status");
@@ -341,9 +352,13 @@ export async function updateOrderPaymentFailed(order: Order, orderId: string): P
   try {
     const payload = mapOrderToBackendPayload(order);
     payload.paymentStatus = "FAILED";
+    const token = getAuthToken();
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     await fetch(`${API_BASE}/customer/orders?orderNumber=${orderId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload),
     });
   } catch (err) {

@@ -1,3 +1,5 @@
+import { getAuthToken } from "../services/adminAuth";
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? "https://api.velvetbrew.in/api/v1" : "/api/v1");
 export interface ApiCategory {
     id: number;
@@ -46,9 +48,13 @@ export async function getCategories(): Promise<ApiCategory[]> {
 }
 
 export async function createMenuItem(item: Omit<ApiMenuItem, "id" | "categoryName">): Promise<ApiMenuItem> {
+    const token = getAuthToken();
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const response = await fetch(`${BASE_URL}/customer/menu`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(item),
     });
     if (!response.ok) throw new Error("Failed to create menu item");
@@ -57,9 +63,13 @@ export async function createMenuItem(item: Omit<ApiMenuItem, "id" | "categoryNam
 }
 
 export async function updateMenuItem(item: Partial<ApiMenuItem> & { id: number }): Promise<ApiMenuItem> {
+    const token = getAuthToken();
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const response = await fetch(`${BASE_URL}/customer/menu`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(item),
     });
     if (!response.ok) throw new Error("Failed to update menu item");
@@ -68,9 +78,13 @@ export async function updateMenuItem(item: Partial<ApiMenuItem> & { id: number }
 }
 
 export async function createCategory(category: Omit<ApiCategory, "id">): Promise<ApiCategory> {
+    const token = getAuthToken();
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const response = await fetch(`${BASE_URL}/category`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(category),
     });
     if (!response.ok) throw new Error("Failed to create category");
@@ -79,9 +93,13 @@ export async function createCategory(category: Omit<ApiCategory, "id">): Promise
 }
 
 export async function updateCategory(category: Partial<ApiCategory> & { id: number }): Promise<ApiCategory> {
+    const token = getAuthToken();
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const response = await fetch(`${BASE_URL}/category`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(category),
     });
     if (!response.ok) throw new Error("Failed to update category");

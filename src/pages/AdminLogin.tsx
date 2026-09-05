@@ -2,10 +2,10 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { ArrowLeft, Lock, ShieldCheck, Mail } from 'lucide-react';
 import { COLORS } from '../data/colors';
-import { useAdminAuth } from '../services/adminAuth';
+import { useAdminAuth, setAuthSession } from '../services/adminAuth';
 import logo from '../assets/velvet-brew-logo.jpg';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { auth } from '../firebase/firebase';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? "https://api.velvetbrew.in/api/v1" : "/api/v1");
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -24,7 +24,7 @@ export default function AdminLogin() {
     );
   }
 
-  // Only auto-redirect if they are fully authenticated AND are an admin.
+  // Only auto-redirect if they are fully authenticated AND are an admin/staff.
   if (user && isAdmin) {
     return <Navigate to="/admin" replace />;
   }
@@ -40,25 +40,46 @@ export default function AdminLogin() {
     setLoading(true);
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // Force token refresh to get latest custom claims
-      const idTokenResult = await userCredential.user.getIdTokenResult(true);
-      
-      if (idTokenResult.claims.role !== 'admin') {
-        // Not an admin, kick them out
-        await signOut(auth);
-        setError("Access denied: You do not have admin privileges.");
-        return; // Don't navigate
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: email,
+          password: password,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setError(result.message || "Invalid email or password.");
+        setLoading(false);
+        return;
       }
+
+      // Check if user has correct role
+      const data = result.data || result; // depending on whether response wraps in data
+      const role = data.role?.toUpperCase();
+      
+      if (role !== "ADMIN" && role !== "STAFF") {
+        setError("Access denied: You do not have admin/staff privileges.");
+        setLoading(false);
+        return;
+      }
+
+      setAuthSession({
+        token: data.token,
+        role: data.role,
+        fullName: data.fullName,
+        email: data.email,
+      });
 
       navigate("/admin", { replace: true });
     } catch (err: any) {
       console.error("Login error", err);
-      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        setError("Invalid email or password.");
-      } else {
-        setError("Failed to log in. Please try again.");
-      }
+      setError("Failed to log in. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -116,7 +137,7 @@ export default function AdminLogin() {
 
           <h2 className="mt-6 text-2xl font-bold lg:mt-0" style={{ color: COLORS.espresso }}>Staff sign in</h2>
           <p className="mt-1.5 text-[13.5px] mb-8" style={{ color: COLORS.clay }}>
-            Access is securely managed via Firebase Authentication.
+            Access is securely managed.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

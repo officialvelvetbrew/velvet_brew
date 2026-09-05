@@ -1,13 +1,18 @@
 import type { InventoryCategory, Supplier, InventoryItem, StockMovement } from "../types";
 
-import { auth } from "../firebase/firebase";
+import { getAuthToken } from "../services/adminAuth";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? "https://api.velvetbrew.in/api/v1" : "/api/v1");
 
 // Helper to safely extract JSON data, dealing with wrappers
 async function fetchAndUnwrap(url: string, options: RequestInit = {}) {
-  // Pass credentials and headers
-  const res = await fetch(url, options);
+  const token = getAuthToken();
+  const headers = new Headers(options.headers || {});
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  
+  const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API Error ${res.status}: ${text}`);
