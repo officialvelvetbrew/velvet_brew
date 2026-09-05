@@ -53,7 +53,7 @@ export default function AdminLogin() {
 
       const result = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!response.ok) {
         setError(result.message || "Invalid email or password.");
         setLoading(false);
         return;
