@@ -11,7 +11,7 @@ import {
   LogOut,
 } from "lucide-react";
 import logo from "../../assets/velvet-brew-logo.jpg";
-import { logout } from "../../services/adminAuth";
+import { logout, getAuthSession } from "../../services/adminAuth";
 import { useNavigate } from "react-router-dom";
 
 interface AdminSidebarProps {
@@ -21,6 +21,8 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarProps) {
   const navigate = useNavigate();
+  const session = getAuthSession();
+  const isAdmin = session?.role === "ADMIN";
 
   const handleLogout = async () => {
     try {
@@ -75,95 +77,99 @@ export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarP
           </div>
         </div>
 
-        {/* CATALOGUE */}
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
-            Catalogue
-          </p>
-          <div className="space-y-1">
-            <button
-              onClick={() => onChangeView("menu")}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
-                activeView === "menu"
-                  ? "bg-[#D4AF37] text-[#2C1810]"
-                  : "text-[#fdfbf7] hover:bg-[#8B7355]/20"
-              }`}
-            >
-              <BookOpen size={18} />
-              Menu & Pricing
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
-              <Tag size={18} />
-              Offers & QR
-            </button>
-          </div>
-        </div>
-
-        {/* OPERATIONS */}
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
-            Operations
-          </p>
-          <div className="space-y-1">
-            <button
-              onClick={() => onChangeView("inventory")}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
-                activeView === "inventory"
-                  ? "bg-[#D4AF37] text-[#2C1810]"
-                  : "text-[#fdfbf7] hover:bg-[#8B7355]/20"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Package size={18} />
-                Inventory
+        {isAdmin && (
+          <>
+            {/* CATALOGUE */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
+                Catalogue
+              </p>
+              <div className="space-y-1">
+                <button
+                  onClick={() => onChangeView("menu")}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
+                    activeView === "menu"
+                      ? "bg-[#D4AF37] text-[#2C1810]"
+                      : "text-[#fdfbf7] hover:bg-[#8B7355]/20"
+                  }`}
+                >
+                  <BookOpen size={18} />
+                  Menu & Pricing
+                </button>
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
+                  <Tag size={18} />
+                  Offers & QR
+                </button>
               </div>
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
-              <Truck size={18} />
-              Vendors & POs
-            </button>
-          </div>
-        </div>
+            </div>
 
-        {/* GROWTH */}
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
-            Growth
-          </p>
-          <div className="space-y-1">
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
-              <Users size={18} />
-              Customers
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
-              <BarChart3 size={18} />
-              Reports
-            </button>
-          </div>
-        </div>
+            {/* OPERATIONS */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
+                Operations
+              </p>
+              <div className="space-y-1">
+                <button
+                  onClick={() => onChangeView("inventory")}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
+                    activeView === "inventory"
+                      ? "bg-[#D4AF37] text-[#2C1810]"
+                      : "text-[#fdfbf7] hover:bg-[#8B7355]/20"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Package size={18} />
+                    Inventory
+                  </div>
+                </button>
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
+                  <Truck size={18} />
+                  Vendors & POs
+                </button>
+              </div>
+            </div>
 
-        {/* ADMINISTRATION */}
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
-            Administration
-          </p>
-          <div className="space-y-1">
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
-              <Shield size={18} />
-              Staff & Access
-            </button>
-          </div>
-        </div>
+            {/* GROWTH */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
+                Growth
+              </p>
+              <div className="space-y-1">
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
+                  <Users size={18} />
+                  Customers
+                </button>
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
+                  <BarChart3 size={18} />
+                  Reports
+                </button>
+              </div>
+            </div>
+
+            {/* ADMINISTRATION */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
+                Administration
+              </p>
+              <div className="space-y-1">
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
+                  <Shield size={18} />
+                  Staff & Access
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="mt-6 pt-4 border-t border-[#8B7355]/30 flex items-center justify-between px-2">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-[#D4AF37] text-[#2C1810] flex items-center justify-center font-bold text-[11px]">
-            AD
+            {session?.fullName?.substring(0, 2).toUpperCase() || (isAdmin ? "AD" : "ST")}
           </div>
           <div>
-            <p className="text-[12px] font-bold text-[#fdfbf7]">Admin User</p>
-            <p className="text-[10px] text-[#8B7355]">Owner · Full Access</p>
+            <p className="text-[12px] font-bold text-[#fdfbf7] truncate w-32">{session?.fullName || "User"}</p>
+            <p className="text-[10px] text-[#8B7355]">{isAdmin ? "Owner · Full Access" : "Staff Member"}</p>
           </div>
         </div>
         <button onClick={handleLogout} className="text-[#8B7355] hover:text-[#fdfbf7] transition-colors">
