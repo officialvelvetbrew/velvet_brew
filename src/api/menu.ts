@@ -52,7 +52,7 @@ export async function createMenuItem(item: Omit<ApiMenuItem, "id" | "categoryNam
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const response = await fetch(`${BASE_URL}/customer/menu`, {
+    const response = await fetch(`${BASE_URL}/admin/menu`, {
         method: "POST",
         headers,
         body: JSON.stringify(item),
@@ -67,7 +67,7 @@ export async function updateMenuItem(item: Partial<ApiMenuItem> & { id: number }
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const response = await fetch(`${BASE_URL}/customer/menu`, {
+    const response = await fetch(`${BASE_URL}/admin/menu/${item.id}`, {
         method: "PATCH",
         headers,
         body: JSON.stringify(item),
