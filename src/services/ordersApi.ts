@@ -231,6 +231,8 @@ export async function createOrder(order: Order): Promise<Order> {
         menuName: item.name,
         quantity: item.qty,
         price: item.price,
+        unitPrice: item.price,
+        unit_price: item.price,
         totalPrice: item.price * item.qty,
         total_price: item.price * item.qty,
       };
@@ -272,6 +274,8 @@ function mapOrderToBackendPayload(order: Order) {
       menuName: item.name,
       quantity: item.qty,
       price: item.price,
+      unitPrice: item.price,
+      unit_price: item.price,
       totalPrice: item.price * item.qty,
       total_price: item.price * item.qty,
     })),
