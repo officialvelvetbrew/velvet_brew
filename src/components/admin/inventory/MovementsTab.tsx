@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { getItems, getMovements } from "../../../api/inventory";
 import type { InventoryItem, StockMovement } from "../../../types";
-import { format } from "date-fns";
 import { rupee } from "../../../utils/currency";
+
+const formatDate = (dateString: string) => {
+  const d = new Date(dateString);
+  return new Intl.DateTimeFormat('en-GB', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(d);
+};
 
 export default function MovementsTab() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -126,7 +130,7 @@ export default function MovementsTab() {
                 movements.map((movement, i) => (
                   <tr key={movement.id || i} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3 text-[#2C1810] whitespace-nowrap">
-                      {movement.createdAt ? format(new Date(movement.createdAt), "MMM d, yyyy HH:mm") : (movement.date || "-")}
+                      {movement.createdAt ? formatDate(movement.createdAt) : (movement.date ? formatDate(movement.date) : "-")}
                     </td>
                     <td className="px-5 py-3">
                       {getTypeBadge(movement.type)}
