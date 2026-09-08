@@ -4,6 +4,7 @@ import { rupee } from "../../utils/currency";
 import { createOrder, createPayment, verifyPayment, updateOrderPaid, updateOrderPaymentFailed } from "../../services/ordersApi";
 import { loadRazorpayScript } from "../../utils/razorpay";
 import type { Order, PaymentMethod } from "../../types";
+import { validateOffer } from "../../api/offers";
 
 interface PosBillingViewProps {
   items: any[];
@@ -20,6 +21,12 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
   const [payment, setPayment] = useState<PaymentMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [offerCode, setOfferCode] = useState("");
+  const [appliedOfferCode, setAppliedOfferCode] = useState<string | null>(null);
+  const [offerDiscount, setOfferDiscount] = useState<number>(0);
+  const [validatingOffer, setValidatingOffer] = useState(false);
+  const [offerError, setOfferError] = useState<string | null>(null);
 
   const categories = [
     { id: "1", name: "Hot Coffee", emoji: "☕" },
@@ -69,6 +76,40 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
     return acc + price * qty;
   }, 0);
 
+  const finalTotal = Math.max(0, subtotal - offerDiscount);
+
+  const handleApplyOffer = async () => {
+    if (!offerCode.trim()) return;
+    setValidatingOffer(true);
+    setOfferError(null);
+    try {
+      const itemsPayload = cartItems.map(c => ({
+        menuId: Number(c.item.id) || Number(c.item.id.replace(/\\D/g, "")) || 0,
+        quantity: c.qty
+      }));
+      const res = await validateOffer({
+        code: offerCode.trim(),
+        mobile: customerPhone.trim(),
+        items: itemsPayload
+      });
+      setAppliedOfferCode(res.code);
+      setOfferDiscount(res.discountAmount);
+    } catch (err: any) {
+      setOfferError(err.message || "Invalid offer code");
+      setAppliedOfferCode(null);
+      setOfferDiscount(0);
+    } finally {
+      setValidatingOffer(false);
+    }
+  };
+
+  const removeOffer = () => {
+    setOfferCode("");
+    setAppliedOfferCode(null);
+    setOfferDiscount(0);
+    setOfferError(null);
+  };
+
   // ... (handleCharge is unchanged) ...
   const handleCharge = async () => {
     setError(null);
@@ -105,11 +146,12 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
           };
         }),
         subtotal: subtotal,
-        savings: 0,
-        total: subtotal,
+        savings: offerDiscount,
+        total: finalTotal,
         paymentMethod: payment,
         paid: false,
         status: "Pending",
+        offerCode: appliedOfferCode || undefined,
         createdAt: new Date().toISOString(),
       };
 
@@ -118,6 +160,8 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
         setCart({});
         setCustomerName("");
         setCustomerPhone("");
+        setPayment("cod");
+        removeOffer();
         setIsMobileCartOpen(false);
         alert("Order placed successfully!");
         setSubmitting(false);
@@ -133,7 +177,7 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
           return;
         }
 
-        const initPaymentRes = await createPayment(orderNumber, subtotal);
+        const initPaymentRes = await createPayment(orderNumber, finalTotal);
         const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
 
         const rzpOrderId = paymentData.orderId;
@@ -141,7 +185,7 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
         
         const options = {
           key: rzpKeyId,
-          amount: Math.round(subtotal * 100),
+          amount: Math.round(finalTotal * 100),
           currency: paymentData.currency || "INR",
           name: "Velvet Brew",
           description: `POS Order Payment - #${orderNumber}`,
@@ -429,9 +473,58 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
             </button>
           </div>
 
-          <div className="flex justify-between items-center pt-2">
-            <span className="text-[14px] font-bold text-[#8B7355]">Subtotal</span>
-            <span className="font-display text-[22px] font-bold text-[#2C1810]">{rupee(subtotal)}</span>
+          <div className="pt-4 border-t border-[#e8dfd5] space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Offer Code"
+                value={offerCode}
+                onChange={(e) => setOfferCode(e.target.value.toUpperCase())}
+                disabled={!!appliedOfferCode || validatingOffer}
+                className="flex-1 rounded-xl border border-[#e8dfd5] bg-white px-4 py-2.5 text-[14px] outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] uppercase disabled:bg-gray-50"
+              />
+              {appliedOfferCode ? (
+                <button
+                  onClick={removeOffer}
+                  className="px-4 py-2.5 rounded-xl border border-red-200 text-red-600 font-bold text-[14px] hover:bg-red-50"
+                >
+                  Remove
+                </button>
+              ) : (
+                <button
+                  onClick={handleApplyOffer}
+                  disabled={!offerCode.trim() || validatingOffer || cartItems.length === 0}
+                  className="px-4 py-2.5 rounded-xl bg-[#2C1810] text-white font-bold text-[14px] disabled:opacity-50 hover:bg-[#3A2418]"
+                >
+                  {validatingOffer ? "..." : "Apply"}
+                </button>
+              )}
+            </div>
+            {offerError && <p className="text-red-500 text-xs font-bold px-1">{offerError}</p>}
+            {appliedOfferCode && <p className="text-green-600 text-xs font-bold px-1">Offer '{appliedOfferCode}' applied: -{rupee(offerDiscount)}</p>}
+
+            <div className="flex justify-between items-center px-1">
+              <span className="font-bold text-[#2C1810] text-[14px]">Subtotal</span>
+              <span className="font-display font-bold text-[#2C1810] text-[18px]">
+                {rupee(subtotal)}
+              </span>
+            </div>
+            {appliedOfferCode && (
+              <div className="flex justify-between items-center px-1 text-green-600">
+                <span className="font-bold text-[14px]">Discount</span>
+                <span className="font-display font-bold text-[18px]">
+                  -{rupee(offerDiscount)}
+                </span>
+              </div>
+            )}
+            {appliedOfferCode && (
+              <div className="flex justify-between items-center px-1 border-t border-[#e8dfd5] pt-2">
+                <span className="font-bold text-[#2C1810] text-[16px]">Total</span>
+                <span className="font-display font-bold text-[#2C1810] text-[22px]">
+                  {rupee(finalTotal)}
+                </span>
+              </div>
+            )}
           </div>
 
           <button
