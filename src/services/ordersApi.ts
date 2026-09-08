@@ -228,13 +228,7 @@ export async function createOrder(order: Order): Promise<Order> {
       const menuId = Number(item.id) || Number(item.id.replace(/\D/g, "")) || 0;
       return {
         menuId,
-        menuName: item.name,
         quantity: item.qty,
-        price: item.price,
-        unitPrice: item.price,
-        unit_price: item.price,
-        totalPrice: item.price * item.qty,
-        total_price: item.price * item.qty,
       };
     }),
       paymentMethod: (order.paymentMethod || "cod").toUpperCase(),
@@ -268,27 +262,17 @@ function mapOrderToBackendPayload(order: Order) {
     customer: {
       fullName: order.customerName,
       mobile: order.phone,
+      email: order.email || "",
     },
     items: order.items.map((item) => ({
       menuId: Number(item.id) || Number(item.id.replace(/\D/g, "")) || 0,
-      menuName: item.name,
       quantity: item.qty,
-      price: item.price,
-      unitPrice: item.price,
-      unit_price: item.price,
-      totalPrice: item.price * item.qty,
-      total_price: item.price * item.qty,
     })),
     paymentStatus: order.paid ? "SUCCESS" : "PENDING",
-    paymentMethod: (order.paymentMethod || "cod").toUpperCase(),
     paymentMode: (order.paymentMethod || "cod").toUpperCase(),
     orderStatus: order.status.toUpperCase(),
-    tax: 0.00,
-    discount: order.savings || 0,
-    subtotal: order.subtotal || 0,
-    totalAmount: order.total || 0,
-    total: order.total || 0,
     specialInstructions: order.note || "",
+    offerCode: order.offerCode || undefined,
   };
 }
 
