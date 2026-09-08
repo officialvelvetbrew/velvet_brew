@@ -292,11 +292,11 @@ export async function updateOrderStatus(order: Order): Promise<Order | null> {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(
-    `${API_BASE}/customer/orders?orderNumber=${order.id}`,
+    `${API_BASE}/admin/orders/${order.id}/status`,
     {
       method: "PATCH",
       headers,
-      body: JSON.stringify(mapOrderToBackendPayload(order)),
+      body: JSON.stringify({ orderStatus: order.status.toUpperCase() }),
     }
   );
 
