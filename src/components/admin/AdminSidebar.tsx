@@ -15,8 +15,8 @@ import { logout, getAuthSession } from "../../services/adminAuth";
 import { useNavigate } from "react-router-dom";
 
 interface AdminSidebarProps {
-  activeView: "pos" | "orders" | "menu" | "inventory" | "offers";
-  onChangeView: (view: "pos" | "orders" | "menu" | "inventory" | "offers") => void;
+  activeView: "pos" | "orders" | "menu" | "inventory" | "offers" | "customers";
+  onChangeView: (view: "pos" | "orders" | "menu" | "inventory" | "offers" | "customers") => void;
 }
 
 export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarProps) {
@@ -142,7 +142,14 @@ export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarP
                 Growth
               </p>
               <div className="space-y-1">
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
+                <button 
+                  onClick={() => onChangeView("customers")}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
+                    activeView === "customers"
+                      ? "bg-[#D4AF37] text-[#2C1810]"
+                      : "text-[#fdfbf7] hover:bg-[#8B7355]/20"
+                  }`}
+                >
                   <Users size={18} />
                   Customers
                 </button>
