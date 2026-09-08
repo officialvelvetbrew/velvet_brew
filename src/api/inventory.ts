@@ -80,13 +80,8 @@ export async function updateSupplier(id: number, data: Partial<Supplier>): Promi
 }
 
 // NOTE: The instructions provided `/api/inventory/suppliers/:id` for enable/disable
-// Wait, the API_BASE might already have /v1 if PROD... Let's cleanly separate base paths.
-const RAW_API_BASE = import.meta.env.VITE_API_BASE_URL
-  ? import.meta.env.VITE_API_BASE_URL.replace("/v1", "")
-  : (import.meta.env.PROD ? "https://api.velvetbrew.in/api" : "/api");
-
 export async function toggleSupplier(id: number, enabled: boolean): Promise<Supplier> {
-  return fetchAndUnwrap(`${RAW_API_BASE}/inventory/suppliers/${id}`, {
+  return fetchAndUnwrap(`${API_BASE}/inventory/suppliers/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ enabled }),
@@ -151,7 +146,7 @@ export async function wastageStock(id: number, data: { quantity: number; reason:
 }
 
 export async function adjustStock(id: number, data: { type: "ADJUSTMENT_IN" | "ADJUSTMENT_OUT"; quantity: number; reason: string }): Promise<any> {
-  return fetchAndUnwrap(`${RAW_API_BASE}/inventory/items/${id}/adjustment`, {
+  return fetchAndUnwrap(`${API_BASE}/inventory/items/${id}/adjustment`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -159,6 +154,6 @@ export async function adjustStock(id: number, data: { type: "ADJUSTMENT_IN" | "A
 }
 
 export async function getMovements(id: number): Promise<StockMovement[]> {
-  const res = await fetchAndUnwrap(`${RAW_API_BASE}/inventory/items/${id}/movements`);
+  const res = await fetchAndUnwrap(`${API_BASE}/inventory/items/${id}/movements`);
   return Array.isArray(res) ? res : [];
 }
