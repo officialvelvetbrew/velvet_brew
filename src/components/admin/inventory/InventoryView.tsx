@@ -7,7 +7,7 @@ import MovementsTab from "./MovementsTab";
 import DashboardTab from "./DashboardTab";
 
 export default function InventoryView() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "items" | "categories" | "suppliers" | "movements">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "items" | "categories" | "movements">("dashboard");
 
   return (
     <div className="h-full flex flex-col bg-[#FDFBF7] font-['Jost',sans-serif]">
@@ -55,17 +55,7 @@ export default function InventoryView() {
             <Tags size={18} />
             Categories
           </button>
-          <button
-            onClick={() => setActiveTab("suppliers")}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-semibold whitespace-nowrap transition-colors ${
-              activeTab === "suppliers"
-                ? "border-[#2C1810] text-[#2C1810]"
-                : "border-transparent text-[#8B7355] hover:text-[#2C1810] hover:border-[#8B7355]/30"
-            }`}
-          >
-            <Truck size={18} />
-            Suppliers
-          </button>
+
           <button
             onClick={() => setActiveTab("movements")}
             className={`flex items-center gap-2 px-4 py-3 border-b-2 font-semibold whitespace-nowrap transition-colors ${
@@ -85,7 +75,7 @@ export default function InventoryView() {
         {activeTab === "dashboard" && <DashboardTab />}
         {activeTab === "items" && <ItemsTab />}
         {activeTab === "categories" && <CategoriesTab />}
-        {activeTab === "suppliers" && <SuppliersTab />}
+
         {activeTab === "movements" && <MovementsTab />}
       </div>
     </div>
