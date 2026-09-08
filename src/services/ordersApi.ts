@@ -247,6 +247,7 @@ export async function createOrder(order: Order): Promise<Order> {
       total: order.total || 0,
       orderStatus: "PENDING",
       paymentStatus: "PENDING",
+      offerCode: order.offerCode || undefined,
     }),
   });
   if (!res.ok) throw new Error("Failed to create order");

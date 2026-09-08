@@ -18,6 +18,7 @@ import { MENU, CATEGORIES, PROMO_HOT_PRICE } from "./data/menu";
 import { getMenu, getCategories } from "./api/menu";
 
 import { createOrder, createPayment, verifyPayment, updateOrderPaid, updateOrderPaymentFailed } from "./services/ordersApi";
+import { validateOffer, ValidateOfferResponse } from "./api/offers";
 import { loadRazorpayScript } from "./utils/razorpay";
 import type { Order } from "./types";
 
@@ -77,6 +78,16 @@ export default function App() {
   });
 
   const [menu, setMenu] = useState<Record<CategoryId, MenuItem[]>>(MENU);
+
+  const [appliedOffer, setAppliedOffer] = useState<ValidateOfferResponse | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
+
+  useEffect(() => {
+    // Clear applied offer if cart changes to prevent stale discounts
+    setAppliedOffer(null);
+    setPromoError(null);
+  }, [cart]);
 
   useEffect(() => {
     localStorage.setItem("vb_cart", JSON.stringify(cart));
@@ -315,14 +326,7 @@ export default function App() {
     if (item.offerPrice !== undefined && item.offerPrice !== null) {
       return item.offerPrice;
     }
-
-    if (category === "hot") {
-      return Math.min(
-        item.price,
-        PROMO_HOT_PRICE
-      );
-    }
-
+    // We removed hardcoded PROMO_HOT_PRICE, offers are now handled via API
     return item.price;
   };
 
@@ -397,26 +401,9 @@ export default function App() {
   }, [cartItems]);
 
   const savings = useMemo(() => {
-    return cartItems.reduce(
-      (sum, line) => {
-        if (
-          line.category !== "hot"
-        )
-          return sum;
-
-        return (
-          sum +
-          (line.item.price -
-            priceFor(
-              line.category,
-              line.item
-            )) *
-          line.qty
-        );
-      },
-      0
-    );
-  }, [cartItems]);
+    if (appliedOffer) return appliedOffer.discountAmount;
+    return 0;
+  }, [appliedOffer]);
 
   const cartCount = cartItems.reduce(
     (sum, item) =>
@@ -429,6 +416,33 @@ export default function App() {
     setCheckoutOpen(true);
   };
 
+  const handleApplyPromo = async (code: string) => {
+    if (!code.trim()) return;
+    setValidatingPromo(true);
+    setPromoError(null);
+    try {
+      const items = cartItems.map((c) => ({
+        menuId: Number(c.item.id.replace(/\D/g, "")),
+        quantity: c.qty,
+      }));
+      const res = await validateOffer({
+        code: code.trim().toUpperCase(),
+        mobile: details.phone || undefined,
+        items,
+      });
+      setAppliedOffer(res);
+    } catch (err: any) {
+      setPromoError(err.message || "Invalid offer code");
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedOffer(null);
+    setPromoError(null);
+  };
+
   const confirmOrder = async () => {
     if (!details.phone || !details.phone.trim()) {
       alert("Please enter phone number");
@@ -436,6 +450,8 @@ export default function App() {
     }
 
     const id = "VB" + Math.floor(100000 + Math.random() * 900000);
+
+    const finalTotalToPay = appliedOffer ? appliedOffer.finalAmount : total;
 
     const order: Order = {
       id,
@@ -451,13 +467,14 @@ export default function App() {
         price: line.item.price,
         qty: line.qty,
       })),
-      subtotal: total + savings,
-      savings,
-      total,
+      subtotal: appliedOffer ? appliedOffer.subtotal : total,
+      savings: appliedOffer ? appliedOffer.discountAmount : 0,
+      total: finalTotalToPay,
       paymentMethod: payment,
       paid: false,
       status: "Pending",
       createdAt: new Date().toISOString(),
+      offerCode: appliedOffer ? appliedOffer.code : undefined,
     };
 
     console.log("--- TRACING ORDER BEFORE createOrder() ---");
@@ -514,7 +531,7 @@ export default function App() {
           cart,
           details,
           payment,
-          amountToPay: total
+          amountToPay: finalTotalToPay
         }));
 
         const scriptLoaded = await loadRazorpayScript();
@@ -524,14 +541,14 @@ export default function App() {
           return;
         }
 
-        const initPaymentRes = await createPayment(orderNumber, total);
+        const initPaymentRes = await createPayment(orderNumber, finalTotalToPay);
         const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
 
         const rzpOrderId = paymentData.orderId;
         const rzpKeyId = paymentData.key;
         const options = {
           key: rzpKeyId,
-          amount: Math.round(total * 100),
+          amount: Math.round(finalTotalToPay * 100),
           currency: paymentData.currency || "INR",
           name: "Velvet Brew",
           description: `Order Payment - #${orderNumber}`,
@@ -730,8 +747,13 @@ export default function App() {
       <CartDrawer
         open={cartOpen}
         cart={cart}
-        total={total}
+        total={appliedOffer ? appliedOffer.finalAmount : total}
         savings={savings}
+        appliedOffer={appliedOffer}
+        promoError={promoError}
+        validatingPromo={validatingPromo}
+        onApplyPromo={handleApplyPromo}
+        onRemovePromo={handleRemovePromo}
         onClose={() => setCartOpen(false)}
         changeQty={changeQty}
         priceFor={priceFor}

@@ -29,6 +29,7 @@ export interface Order {
     paymentMethod: PaymentMethod;
     paid: boolean;
     status: OrderStatus;
+    offerCode?: string;
     createdAt: string;
 }
 

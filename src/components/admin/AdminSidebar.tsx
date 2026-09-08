@@ -15,8 +15,8 @@ import { logout, getAuthSession } from "../../services/adminAuth";
 import { useNavigate } from "react-router-dom";
 
 interface AdminSidebarProps {
-  activeView: "pos" | "orders" | "menu" | "inventory";
-  onChangeView: (view: "pos" | "orders" | "menu" | "inventory") => void;
+  activeView: "pos" | "orders" | "menu" | "inventory" | "offers";
+  onChangeView: (view: "pos" | "orders" | "menu" | "inventory" | "offers") => void;
 }
 
 export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarProps) {
@@ -96,7 +96,14 @@ export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarP
                   <BookOpen size={18} />
                   Menu & Pricing
                 </button>
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
+                <button
+                  onClick={() => onChangeView("offers")}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
+                    activeView === "offers"
+                      ? "bg-[#D4AF37] text-[#2C1810]"
+                      : "text-[#fdfbf7] hover:bg-[#8B7355]/20"
+                  }`}
+                >
                   <Tag size={18} />
                   Offers & QR
                 </button>

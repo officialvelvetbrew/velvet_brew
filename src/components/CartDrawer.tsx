@@ -18,6 +18,11 @@ interface CartDrawerProps {
     changeQty: (id: string, delta: number) => void;
     priceFor: (category: CategoryId, item: MenuItem) => number;
     onCheckout: () => void;
+    appliedOffer?: any;
+    promoError?: string | null;
+    validatingPromo?: boolean;
+    onApplyPromo?: (code: string) => void;
+    onRemovePromo?: () => void;
 }
 
 const CHANNELS = [
@@ -34,6 +39,11 @@ export default function CartDrawer({
     changeQty,
     priceFor,
     onCheckout,
+    appliedOffer,
+    promoError,
+    validatingPromo,
+    onApplyPromo,
+    onRemovePromo,
 }: CartDrawerProps) {
     const [channel, setChannel] = useState('dine_in');
     const [promoCode, setPromoCode] = useState('');
@@ -44,7 +54,9 @@ export default function CartDrawer({
     const itemCount = cartLines.reduce((acc, line) => acc + line.qty, 0);
 
     const handleApplyPromo = () => {
-        // This is a UI mock for the promo apply since we don't have global promo state yet
+        if (onApplyPromo && promoCode.trim()) {
+            onApplyPromo(promoCode);
+        }
     };
 
     return (
@@ -176,30 +188,40 @@ export default function CartDrawer({
                                 <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">
                                     <Tag size={14} /> Promo code
                                 </p>
-                                {savings > 0 ? (
+                                {appliedOffer ? (
                                     <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-[#10b981]/40 bg-[#10b981]/10 px-3 py-2.5">
                                         <div className="min-w-0">
-                                            <p className="text-[13px] font-bold text-[#10b981]">VELVET10</p>
+                                            <p className="text-[13px] font-bold text-[#10b981]">{appliedOffer.code}</p>
                                             <p className="text-[11.5px] text-[#8B7355]">
-                                                You saved {rupee(savings)}
+                                                You saved {rupee(appliedOffer.discountAmount)}
                                             </p>
                                         </div>
+                                        <button 
+                                            onClick={onRemovePromo}
+                                            className="p-1.5 text-[#10b981] hover:bg-[#10b981]/20 rounded-lg transition-colors shrink-0"
+                                        >
+                                            <X size={14} />
+                                        </button>
                                     </div>
                                 ) : (
                                     <div className="flex gap-2">
                                         <input
                                             value={promoCode}
                                             onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                                            placeholder=""
+                                            placeholder="Enter code"
                                             className="h-10 flex-1 rounded-xl border border-[#e8dfd5] px-3 text-[13px] outline-none focus:border-[#d4c5b0] uppercase tracking-wider text-[#2C1810]"
                                         />
                                         <button 
                                             onClick={handleApplyPromo}
-                                            className="h-10 shrink-0 rounded-xl bg-[#2C1810] px-4 text-[13px] font-semibold text-[#fdfbf7] hover:bg-[#1a0f0a] transition-colors"
+                                            disabled={validatingPromo || !promoCode.trim()}
+                                            className="h-10 shrink-0 rounded-xl bg-[#2C1810] px-4 text-[13px] font-semibold text-[#fdfbf7] hover:bg-[#1a0f0a] transition-colors disabled:opacity-70"
                                         >
-                                            Apply
+                                            {validatingPromo ? "..." : "Apply"}
                                         </button>
                                     </div>
+                                )}
+                                {promoError && !appliedOffer && (
+                                    <p className="text-red-500 text-xs mt-2 font-medium px-1">{promoError}</p>
                                 )}
                             </div>
 
@@ -209,10 +231,10 @@ export default function CartDrawer({
                                     <span>Item total</span>
                                     <span className="font-medium">{rupee(total + savings)}</span>
                                 </div>
-                                {savings > 0 && (
+                                {appliedOffer && (
                                     <div className="flex justify-between text-[#10b981]">
-                                        <span>Offer applied <span className="text-[10px] uppercase ml-1 opacity-70">VELVET10</span></span>
-                                        <span className="font-medium">- {rupee(savings)}</span>
+                                        <span>Offer applied <span className="text-[10px] uppercase ml-1 opacity-70">{appliedOffer.code}</span></span>
+                                        <span className="font-medium">- {rupee(appliedOffer.discountAmount)}</span>
                                     </div>
                                 )}
                                 <div className="border-t border-dashed border-[#e8dfd5] my-2 pt-2 flex justify-between font-bold text-[16px] text-[#2C1810]">

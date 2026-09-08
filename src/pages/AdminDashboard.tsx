@@ -7,13 +7,14 @@ import AdminSidebar from "../components/admin/AdminSidebar";
 import PosBillingView from "../components/admin/PosBillingView";
 import OrderCenterView from "../components/admin/OrderCenterView";
 import MenuPricingView from "../components/admin/MenuPricingView";
+import OffersView from "../components/admin/OffersView";
 
 import InventoryView from "../components/admin/inventory/InventoryView";
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
-  const [activeView, setActiveView] = useState<"pos" | "orders" | "menu" | "inventory">("orders");
+  const [activeView, setActiveView] = useState<"pos" | "orders" | "menu" | "inventory" | "offers">("orders");
   const [loading, setLoading] = useState(true);
 
   // ... (keep load logic) ...
@@ -149,6 +150,8 @@ export default function AdminDashboard() {
             <PosBillingView items={menuItems} />
           ) : activeView === "menu" ? (
             <MenuPricingView />
+          ) : activeView === "offers" ? (
+            <OffersView />
           ) : activeView === "inventory" ? (
             <InventoryView />
           ) : (
