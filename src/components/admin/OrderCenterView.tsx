@@ -227,9 +227,12 @@ export default function OrderCenterView({
                           <span className="grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded bg-[#2C1810] text-[11px] font-bold text-[#fdfbf7]">
                             {l.qty}
                           </span>
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 flex justify-between items-center gap-2">
                             <p className="truncate text-[13px] font-bold text-[#2C1810]">
                               {l.name}
+                            </p>
+                            <p className="text-[13px] font-bold text-[#8B7355] whitespace-nowrap">
+                              {rupee(l.price * l.qty)}
                             </p>
                           </div>
                         </div>

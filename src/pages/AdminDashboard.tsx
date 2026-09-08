@@ -34,14 +34,16 @@ export default function AdminDashboard() {
       const menuMap = new Map<number, any>(apiItems.map((item: any) => [item.id, item]));
 
       const mergedOrders = data.map((order) => {
+        let recalcSubtotal = 0;
+        
         const items = order.items.map((it) => {
           const idNum = Number(it.id) || Number(it.id.replace(/\D/g, "")) || 0;
           const menuItem = menuMap.get(idNum);
 
           let price = it.price;
           
-          if (!price && menuItem) {
-            price = menuItem.offerPrice !== null && menuItem.offerPrice !== undefined
+          if (menuItem) {
+            price = menuItem.offerPrice !== null && menuItem.offerPrice !== undefined && menuItem.offerPrice < menuItem.price
               ? menuItem.offerPrice
               : menuItem.price;
 
@@ -50,6 +52,8 @@ export default function AdminDashboard() {
               price = Math.min(price, PROMO_HOT_PRICE);
             }
           }
+          
+          recalcSubtotal += price * it.qty;
 
           return {
             ...it,
@@ -57,13 +61,16 @@ export default function AdminDashboard() {
           };
         });
 
-        // Use backend subtotal/total instead of recalculating, to fix ₹0 bug for orders without items
+        // Always recalculate totals locally to reflect discounted prices
+        const discount = order.savings || 0;
+        const totalAmount = Math.max(0, recalcSubtotal - discount);
+
         return {
           ...order,
           items,
-          subtotal: order.subtotal || 0,
-          total: order.total || 0,
-          savings: order.savings || 0,
+          subtotal: recalcSubtotal,
+          total: totalAmount,
+          savings: discount,
           paid: order.paid,
           paymentMethod: order.paymentMethod,
         };
