@@ -166,10 +166,6 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
         alert("Order placed successfully!");
         setSubmitting(false);
       } else {
-        const createRes = await createOrder(newOrder);
-        const backendOrder = createRes && (createRes as any).data ? (createRes as any).data : createRes;
-        const orderNumber = backendOrder?.orderNumber || backendOrder?.id || orderId;
-
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
           setError("Failed to load Razorpay payment portal.");
@@ -177,18 +173,18 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
           return;
         }
 
-        const initPaymentRes = await createPayment(orderNumber, finalTotal);
+        const initPaymentRes = await createPayment(newOrder);
         const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
 
-        const rzpOrderId = paymentData.orderId;
-        const rzpKeyId = paymentData.key;
+        const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
+        const rzpKeyId = paymentData.key || paymentData.keyId;
         
         const options = {
           key: rzpKeyId,
           amount: Math.round(finalTotal * 100),
           currency: paymentData.currency || "INR",
           name: "Velvet Brew",
-          description: `POS Order Payment - #${orderNumber}`,
+          description: `POS Order Payment`,
           order_id: rzpOrderId,
           handler: async function (response: any) {
             try {
@@ -198,7 +194,6 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
               });
-              await updateOrderPaid({ ...newOrder, id: orderNumber, paid: true });
               setCart({});
               setCustomerName("");
               setCustomerPhone("");
@@ -215,7 +210,6 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
             ondismiss: async function () {
               setSubmitting(true);
               try {
-                await updateOrderPaymentFailed(newOrder, orderNumber);
                 alert("Payment was cancelled or failed.");
               } catch (err) {
                 console.error("Failed to mark order as payment failed", err);
@@ -231,7 +225,6 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
         rzp.on("payment.failed", async function (response: any) {
           setSubmitting(true);
           try {
-            await updateOrderPaymentFailed(newOrder, orderNumber);
             alert(`Payment failed: ${response.error.description}`);
           } catch (err) {
             console.error(err);

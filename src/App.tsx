@@ -518,12 +518,7 @@ export default function App() {
           }
         }
         
-        if (orderNumber === id) {
-          // Create the backend order first!
-          const createRes = await createOrder(order);
-          const backendOrder = createRes && (createRes as any).data ? (createRes as any).data : createRes;
-          orderNumber = backendOrder.orderNumber || backendOrder.id || id;
-        }
+        // Remove createOrder for online payments, createPayment handles it!
 
         // Save pending checkout state to localStorage before opening Razorpay
         localStorage.setItem("vb_pending_checkout", JSON.stringify({
@@ -541,17 +536,17 @@ export default function App() {
           return;
         }
 
-        const initPaymentRes = await createPayment(orderNumber, finalTotalToPay);
+        const initPaymentRes = await createPayment(order);
         const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
 
-        const rzpOrderId = paymentData.orderId;
-        const rzpKeyId = paymentData.key;
+        const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
+        const rzpKeyId = paymentData.key || paymentData.keyId;
         const options = {
           key: rzpKeyId,
           amount: Math.round(finalTotalToPay * 100),
           currency: paymentData.currency || "INR",
           name: "Velvet Brew",
-          description: `Order Payment - #${orderNumber}`,
+          description: `Order Payment`,
           order_id: rzpOrderId,
           handler: async function (response: any) {
             try {
@@ -562,10 +557,7 @@ export default function App() {
                 razorpaySignature: response.razorpay_signature,
               });
 
-              // 2. Update the backend customer order's payment status to SUCCESS
-              await updateOrderPaid({ ...order, id: orderNumber, paid: true });
-
-              alert(`Payment successful! Order ID: ${orderNumber}`);
+              alert(`Payment successful!`);
 
               localStorage.removeItem("vb_pending_checkout");
               setCheckoutOpen(false);
@@ -573,9 +565,13 @@ export default function App() {
               setDetails({ name: "", phone: "", email: "", mode: "Takeaway", note: "" });
               setPayment("upi");
             } catch (err: any) {
-              console.error("Payment verification or order creation failed:", err);
-              await updateOrderPaymentFailed(order, orderNumber);
-              alert("Payment verification or order creation failed. Please contact support.");
+              console.error("Payment verification failed:", err);
+              alert("Payment verification failed. Please contact support.");
+            }
+          },
+          modal: {
+            ondismiss: function () {
+              alert("Payment was cancelled or failed.");
             }
           },
           prefill: {
@@ -585,13 +581,6 @@ export default function App() {
           },
           theme: {
             color: "#C79A56",
-          },
-          modal: {
-            ondismiss: async function () {
-              localStorage.removeItem("vb_pending_checkout");
-              await updateOrderPaymentFailed(order, orderNumber);
-              alert("Payment session closed. You can retry paying by clicking pay again.");
-            },
           },
           redirect: false, // Prevent top-level redirect on mobile browsers
         };

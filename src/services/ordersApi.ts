@@ -382,14 +382,14 @@ export async function updateOrderPaymentFailed(order: Order, orderId: string): P
 
 
 /** Create a payment order on Razorpay via backend */
-export async function createPayment(orderNumber: string, amount: number): Promise<any> {
+export async function createPayment(order: Order): Promise<any> {
   if (USE_MOCK) {
     return {
       success: true,
       message: "Mock payment order created",
       data: {
         razorpayOrderId: "order_mock_" + Math.floor(Math.random() * 100000),
-        amount: amount,
+        amount: order.total || 0,
         currency: "INR",
         keyId: "rzp_test_mock",
       },
@@ -400,10 +400,23 @@ export async function createPayment(orderNumber: string, amount: number): Promis
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
+  const backendRequest = {
+    customer: {
+      fullName: order.customerName,
+      mobile: order.phone,
+      email: undefined,
+    },
+    items: order.items.map((i: any) => ({
+      menuId: i.menuId || Number(i.id),
+      quantity: i.qty,
+    })),
+    offerCode: order.offerCode,
+  };
+
   const res = await fetch(`${API_BASE}/payments`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ orderNumber, amount }),
+    body: JSON.stringify(backendRequest),
   });
   if (res.status === 401 || res.status === 403) {
     logout();

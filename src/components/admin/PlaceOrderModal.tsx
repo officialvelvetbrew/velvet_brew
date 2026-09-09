@@ -225,10 +225,6 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
         setSubmitting(false);
         onClose();
       } else {
-        const createRes = await createOrder(newOrder);
-        const backendOrder = createRes && (createRes as any).data ? (createRes as any).data : createRes;
-        const orderNumber = backendOrder.orderNumber || backendOrder.id || orderId;
-
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
           setError("Failed to load Razorpay payment portal. Please check your internet connection.");
@@ -236,17 +232,17 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
           return;
         }
 
-        const initPaymentRes = await createPayment(orderNumber, total);
+        const initPaymentRes = await createPayment(newOrder);
         const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
 
-        const rzpOrderId = paymentData.orderId;
-        const rzpKeyId = paymentData.key;
+        const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
+        const rzpKeyId = paymentData.key || paymentData.keyId;
         const options = {
           key: rzpKeyId,
           amount: Math.round(total * 100),
           currency: paymentData.currency || "INR",
           name: "Velvet Brew",
-          description: `POS Order Payment - #${orderNumber}`,
+          description: `POS Order Payment`,
           order_id: rzpOrderId,
           handler: async function (response: any) {
             try {
@@ -258,9 +254,6 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
                 razorpaySignature: response.razorpay_signature,
               });
 
-              // 2. Update the backend customer order's payment status to SUCCESS
-              await updateOrderPaid({ ...newOrder, id: orderNumber, paid: true });
-
               onSuccess();
               
               // Reset state
@@ -269,9 +262,8 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
               setPayment("upi");
               onClose();
             } catch (err: any) {
-              console.error("Payment verification or order creation failed:", err);
-              await updateOrderPaymentFailed(newOrder, orderNumber);
-              setError("Payment verification or order creation failed. Please contact support.");
+              console.error("Payment verification failed:", err);
+              setError("Payment verification failed. Please contact support.");
             } finally {
               setSubmitting(false);
             }
@@ -286,7 +278,6 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
           },
           modal: {
             ondismiss: async function () {
-              await updateOrderPaymentFailed(newOrder, orderNumber);
               setSubmitting(false);
             },
           },
