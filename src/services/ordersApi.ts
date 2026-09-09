@@ -301,6 +301,65 @@ function mapOrderToBackendPayload(order: Order) {
   };
 }
 
+/** Replace order items and re-price (called when admin edits an existing order) */
+export async function updateOrderItems(order: Order, newItems: any[]): Promise<Order | null> {
+  if (USE_MOCK) {
+    const orders = readStore();
+    const idx = orders.findIndex((o) => o.id === order.id);
+    if (idx === -1) return null;
+    const subtotal = newItems.reduce((sum: number, item: any) => sum + item.price * item.qty, 0);
+    const total = Math.max(0, subtotal - (order.savings || 0));
+    orders[idx] = {
+      ...order,
+      items: newItems,
+      subtotal,
+      total,
+    };
+    writeStore(orders);
+    return orders[idx];
+  }
+
+  const token = getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const payload = {
+    customer: {
+      fullName: order.customerName,
+      mobile: order.phone,
+      email: order.email || "",
+    },
+    items: newItems.map((item: any) => ({
+      menuId: Number(item.id) || Number(item.id.replace(/\D/g, "")) || 0,
+      quantity: item.qty,
+    })),
+  };
+
+  const res = await fetch(
+    `${API_BASE}/customer/orders?orderNumber=${encodeURIComponent(order.id)}`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (res.status === 401 || res.status === 403) {
+    logout();
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Update order items failed:", res.status, errorText);
+    throw new Error("Failed to update order items");
+  }
+
+  const result = await res.json();
+  return result?.data ? mapBackendOrderToFrontend(result.data) : null;
+}
+
+
 /** Update an order's status (called from the admin dashboard). */
 export async function updateOrderStatus(order: Order): Promise<Order | null> {
   if (USE_MOCK) {
@@ -335,7 +394,7 @@ export async function updateOrderStatus(order: Order): Promise<Order | null> {
   return result?.data ? mapBackendOrderToFrontend(result.data) : null;
 }
 
-/** Mark an order paid/unpaid — useful once real payment webhooks exist. */
+/** Mark an order paid/unpaid — uses admin status endpoint with paymentStatus. */
 export async function updateOrderPaid(order: Order): Promise<Order | null> {
   if (USE_MOCK) {
     const orders = readStore();
@@ -350,30 +409,51 @@ export async function updateOrderPaid(order: Order): Promise<Order | null> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}/customer/orders?orderNumber=${order.id}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify(mapOrderToBackendPayload(order)),
-  });
-  if (!res.ok) throw new Error("Failed to update payment status");
+  const paymentStatus = order.paid ? "SUCCESS" : "PENDING";
+
+  const res = await fetch(
+    `${API_BASE}/admin/orders/${order.id}/status`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({
+        orderStatus: order.status.toUpperCase(),
+        paymentStatus,
+      }),
+    }
+  );
+
+  if (res.status === 401 || res.status === 403) {
+    console.error("Auth failed while updating payment status, logging out");
+    logout();
+    throw new Error("Session expired");
+  }
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Update payment status failed:", res.status, errorText);
+    throw new Error("Failed to update payment status");
+  }
+
   const result = await res.json();
-  return result && result.data ? mapBackendOrderToFrontend(result.data) : null;
+  return result?.data ? mapBackendOrderToFrontend(result.data) : null;
 }
 
 /** Mark an order's payment as failed (when Razorpay is closed or fails) */
 export async function updateOrderPaymentFailed(order: Order, orderId: string): Promise<void> {
   if (USE_MOCK) return;
   try {
-    const payload = mapOrderToBackendPayload(order);
-    payload.paymentStatus = "FAILED";
     const token = getAuthToken();
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    await fetch(`${API_BASE}/customer/orders?orderNumber=${orderId}`, {
+    await fetch(`${API_BASE}/admin/orders/${orderId}/status`, {
       method: "PATCH",
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        orderStatus: order.status.toUpperCase(),
+        paymentStatus: "FAILED",
+      }),
     });
   } catch (err) {
     console.error("Failed to mark order payment as failed", err);

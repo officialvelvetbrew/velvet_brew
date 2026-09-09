@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { Clock3, Store, Truck, UtensilsCrossed, X, Check, PackageCheck } from "lucide-react";
+import { Clock3, Store, Truck, UtensilsCrossed, X, Check, PackageCheck, Edit3 } from "lucide-react";
 import { rupee } from "../../utils/currency";
 import type { Order, OrderStatus } from "../../types";
+import EditOrderModal from "./EditOrderModal";
 
 const FILTERS: Array<"All" | OrderStatus> = [
   "All",
@@ -30,13 +31,17 @@ const NEXT_STATUS: Record<string, OrderStatus> = {
 interface OrderCenterViewProps {
   orders: Order[];
   onStatusChange: (id: string, status: OrderStatus) => void;
+  onOrderUpdated?: () => void;
 }
 
 export default function OrderCenterView({
   orders,
   onStatusChange,
+  onOrderUpdated,
 }: OrderCenterViewProps) {
   const [filter, setFilter] = useState<"All" | OrderStatus>("All");
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+
 
   const live = orders.filter((o) => !["Completed", "Rejected"].includes(o.status));
   const visible = filter === "All" ? orders : orders.filter((o) => o.status === filter);
@@ -258,11 +263,16 @@ export default function OrderCenterView({
                       </div>
 
                       <div className="flex shrink-0 gap-2">
-                        <button
-                          className="flex-1 rounded-xl border border-[#e8dfd5] bg-white px-3 py-2.5 text-[12px] font-bold text-[#8B7355] hover:border-[#d4c5b0] transition-colors"
-                        >
-                          Details
-                        </button>
+                        {!done && (
+                          <button
+                            onClick={() => setEditingOrder(order)}
+                            className="flex items-center gap-1 rounded-xl border border-[#D4AF37] bg-[#D4AF37]/10 px-3 py-2.5 text-[12px] font-bold text-[#8B7355] hover:bg-[#D4AF37]/20 transition-colors"
+                            title="Edit / Add items to order"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
+                        )}
                         {!done && (
                           <button 
                             onClick={() => advance(order)}
@@ -294,6 +304,18 @@ export default function OrderCenterView({
           </div>
         )}
       </div>
+
+      {/* Edit Order Items Modal */}
+      <EditOrderModal
+        open={Boolean(editingOrder)}
+        order={editingOrder}
+        onClose={() => setEditingOrder(null)}
+        onSuccess={() => {
+          setEditingOrder(null);
+          if (onOrderUpdated) onOrderUpdated();
+        }}
+      />
     </div>
   );
 }
+

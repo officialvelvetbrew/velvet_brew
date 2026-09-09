@@ -123,7 +123,7 @@ export default function AdminDashboard() {
             <OrderCenterView 
               orders={orders} 
               onStatusChange={handleStatusChange} 
-
+              onOrderUpdated={load}
             />
           )}
         </div>
