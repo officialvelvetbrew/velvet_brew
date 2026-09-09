@@ -40,10 +40,9 @@ function timeAgo(iso: string): string {
 interface OrderCardProps {
   order: Order;
   onStatusChange: (id: string, status: OrderStatus) => void;
-  onTogglePaid: (id: string, paid: boolean) => void;
 }
 
-export default function OrderCard({ order, onStatusChange, onTogglePaid }: OrderCardProps) {
+export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [expanded, setExpanded] = useState(false);
   const PayIcon = PAY_ICON[order.paymentMethod];
   const nextStep = NEXT_STEP[order.status];
@@ -66,19 +65,16 @@ export default function OrderCard({ order, onStatusChange, onTogglePaid }: Order
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <StatusBadge status={order.status} />
-          <button
-            onClick={() => onTogglePaid(order.id, !order.paid)}
+          <span
             className="text-[11px] uppercase tracking-wide rounded-full px-2.5 py-1 flex items-center gap-1.5"
-            style={
-              order.paid
-                ? { color: COLORS.success, border: `1px solid ${COLORS.success}` }
-                : { color: COLORS.danger, border: `1px solid ${COLORS.danger}` }
-            }
-            title="Click to toggle paid status"
+            style={{
+              color: COLORS.success,
+              border: `1px solid ${COLORS.success}`,
+            }}
           >
-            {order.paid ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-            {order.paid ? "Paid" : "Unpaid"}
-          </button>
+            {order.paymentMethod === "upi" || order.paymentMethod === "card" ? <CheckCircle2 size={12} /> : <Wallet size={12} />}
+            {order.paymentMethod === "upi" || order.paymentMethod === "card" ? "UPI/CARD" : "CASH"}
+          </span>
         </div>
       </div>
 

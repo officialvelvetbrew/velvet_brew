@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { fetchOrders, updateOrderStatus, updateOrderPaid } from "../services/ordersApi";
+import { fetchOrders, updateOrderStatus } from "../services/ordersApi";
 import { getMenu } from "../api/menu";
 
 import type { Order, OrderStatus } from "../types";
@@ -62,13 +62,7 @@ export default function AdminDashboard() {
     await updateOrderStatus(updated);
   };
 
-  const handleTogglePaid = async (id: string, paid: boolean) => {
-    const order = orders.find((o) => o.id === id);
-    if (!order) return;
-    const updated = { ...order, paid };
-    setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
-    await updateOrderPaid(updated);
-  };
+
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -129,7 +123,7 @@ export default function AdminDashboard() {
             <OrderCenterView 
               orders={orders} 
               onStatusChange={handleStatusChange} 
-              onTogglePaid={handleTogglePaid} 
+
             />
           )}
         </div>

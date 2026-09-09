@@ -30,13 +30,11 @@ const NEXT_STATUS: Record<string, OrderStatus> = {
 interface OrderCenterViewProps {
   orders: Order[];
   onStatusChange: (id: string, status: OrderStatus) => void;
-  onTogglePaid: (id: string, paid: boolean) => void;
 }
 
 export default function OrderCenterView({
   orders,
   onStatusChange,
-  onTogglePaid,
 }: OrderCenterViewProps) {
   const [filter, setFilter] = useState<"All" | OrderStatus>("All");
 
@@ -252,14 +250,11 @@ export default function OrderCenterView({
                         <p className="font-display text-[18px] font-bold text-[#2C1810]">
                           {rupee(order.total)}
                         </p>
-                        <button 
-                          onClick={() => onTogglePaid(order.id, !order.paid)}
-                          className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                            order.paid ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-100 text-red-700 hover:bg-red-200"
-                          }`}
+                        <span 
+                          className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-green-100 text-green-700"
                         >
-                          {order.paid ? "Paid" : "Unpaid"}
-                        </button>
+                          {order.paymentMethod === "upi" || order.paymentMethod === "card" ? "UPI/CARD" : "CASH"}
+                        </span>
                       </div>
 
                       <div className="flex shrink-0 gap-2">
