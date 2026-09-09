@@ -12,11 +12,12 @@ import CustomersView from "../components/admin/CustomersView";
 
 import InventoryView from "../components/admin/inventory/InventoryView";
 import VendorsView from "../components/admin/VendorsView";
+import ReportsView from "../components/admin/ReportsView";
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
-  const [activeView, setActiveView] = useState<"pos" | "orders" | "menu" | "inventory" | "vendors" | "offers" | "customers">("orders");
+  const [activeView, setActiveView] = useState<"pos" | "orders" | "menu" | "inventory" | "vendors" | "reports" | "offers" | "customers">("orders");
   const [loading, setLoading] = useState(true);
 
   // ... (keep load logic) ...
@@ -167,6 +168,8 @@ export default function AdminDashboard() {
             <InventoryView />
           ) : activeView === "vendors" ? (
             <VendorsView />
+          ) : activeView === "reports" ? (
+            <ReportsView orders={orders} />
           ) : (
             <OrderCenterView 
               orders={orders} 

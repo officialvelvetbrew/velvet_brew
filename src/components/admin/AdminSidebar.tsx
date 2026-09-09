@@ -15,8 +15,8 @@ import { logout, getAuthSession } from "../../services/adminAuth";
 import { useNavigate } from "react-router-dom";
 
 interface AdminSidebarProps {
-  activeView: "pos" | "orders" | "menu" | "inventory" | "vendors" | "offers" | "customers";
-  onChangeView: (view: "pos" | "orders" | "menu" | "inventory" | "vendors" | "offers" | "customers") => void;
+  activeView: "pos" | "orders" | "menu" | "inventory" | "vendors" | "reports" | "offers" | "customers";
+  onChangeView: (view: "pos" | "orders" | "menu" | "inventory" | "vendors" | "reports" | "offers" | "customers") => void;
 }
 
 export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarProps) {
@@ -160,7 +160,14 @@ export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarP
                   <Users size={18} />
                   Customers
                 </button>
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
+                <button 
+                  onClick={() => onChangeView("reports")}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
+                    activeView === "reports"
+                      ? "bg-[#D4AF37] text-[#2C1810]"
+                      : "text-[#fdfbf7] hover:bg-[#8B7355]/20"
+                  }`}
+                >
                   <BarChart3 size={18} />
                   Reports
                 </button>
