@@ -172,7 +172,7 @@ export async function fetchOrders(): Promise<Order[]> {
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}/customer/orders`, { headers });
+  const res = await fetch(`${API_BASE}/admin/orders`, { headers });
   if (!res.ok) throw new Error("Failed to fetch orders");
   const result = await res.json();
 
