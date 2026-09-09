@@ -396,11 +396,19 @@ export async function createPayment(orderNumber: string, amount: number): Promis
     };
   }
 
+  const token = getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/payments`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ orderNumber, amount }),
   });
+  if (res.status === 401 || res.status === 403) {
+    logout();
+    throw new Error("Session expired. Please log in again.");
+  }
   if (!res.ok) throw new Error("Failed to initialize payment");
   return res.json();
 }
@@ -425,13 +433,19 @@ export async function verifyPayment(data: {
     razorpaySignaturePresent: Boolean(data.razorpaySignature),
   });
 
+  const token = getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/payments/verify`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(data),
   });
+  if (res.status === 401 || res.status === 403) {
+    logout();
+    throw new Error("Session expired. Please log in again.");
+  }
 
   // Get the actual backend response even when status is 4xx/5xx
   if (!res.ok) {
