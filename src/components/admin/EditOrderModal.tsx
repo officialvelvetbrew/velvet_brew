@@ -72,7 +72,10 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
 
         if (apiItems.length > 0) {
           const newMenu: Record<CategoryId, MenuItem[]> = { hot: [], cold: [], shakes: [], bites: [] };
+          const nameToApiMap = new Map<string, any>();
+
           apiItems.forEach((item: any) => {
+            nameToApiMap.set(item.name.trim().toLowerCase(), item);
             let category: CategoryId = "hot";
             if (item.categoryId === 1) category = "hot";
             else if (item.categoryId === 2) category = "cold";
@@ -92,6 +95,29 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
             });
           });
           setMenu(newMenu);
+
+          // Re-map initial cart items to real backend menu IDs
+          setCart((prevCart) => {
+            const updatedCart: Record<string, { item: MenuItem; category: CategoryId; qty: number }> = {};
+            Object.values(prevCart).forEach((line) => {
+              const match = nameToApiMap.get(line.item.name.trim().toLowerCase()) ||
+                apiItems.find((i: any) => String(i.id) === String(line.item.id));
+              
+              const realId = match ? String(match.id) : line.item.id;
+              const realPrice = match ? match.price : line.item.price;
+
+              updatedCart[realId] = {
+                item: {
+                  ...line.item,
+                  id: realId,
+                  price: realPrice,
+                },
+                category: line.category,
+                qty: line.qty,
+              };
+            });
+            return updatedCart;
+          });
         }
       } catch (err) {
         console.error("EditOrderModal menu load error:", err);

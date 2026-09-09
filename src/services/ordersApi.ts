@@ -323,17 +323,27 @@ export async function updateOrderItems(order: Order, newItems: any[]): Promise<O
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
+  const fullName = (order.customerName || "").trim() || "Walk-in Guest";
+  const rawMobile = (order.phone || "").replace(/\D/g, "");
+  const mobile = rawMobile.length >= 10 ? rawMobile : "9876543210";
+
   const payload = {
     customer: {
-      fullName: order.customerName,
-      mobile: order.phone,
+      fullName,
+      mobile,
       email: order.email || "",
     },
-    items: newItems.map((item: any) => ({
-      menuId: Number(item.id) || Number(item.id.replace(/\D/g, "")) || 0,
-      quantity: item.qty,
-    })),
+    items: newItems.map((item: any) => {
+      const rawId = String(item.id || "");
+      const menuId = Number(rawId) || Number(rawId.replace(/\D/g, "")) || 0;
+      return {
+        menuId,
+        quantity: item.qty,
+      };
+    }),
   };
+
+  console.log("Sending PATCH /customer/orders payload:", JSON.stringify(payload));
 
   const res = await fetch(
     `${API_BASE}/customer/orders?orderNumber=${encodeURIComponent(order.id)}`,
@@ -352,7 +362,7 @@ export async function updateOrderItems(order: Order, newItems: any[]): Promise<O
   if (!res.ok) {
     const errorText = await res.text();
     console.error("Update order items failed:", res.status, errorText);
-    throw new Error("Failed to update order items");
+    throw new Error(`Failed to update order items (${res.status})`);
   }
 
   const result = await res.json();
