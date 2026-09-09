@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { fetchOrders, updateOrderStatus, updateOrderPaid } from "../services/ordersApi";
 import { getMenu } from "../api/menu";
-import { PROMO_HOT_PRICE } from "../data/menu";
+
 import type { Order, OrderStatus } from "../types";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import PosBillingView from "../components/admin/PosBillingView";
@@ -33,52 +33,7 @@ export default function AdminDashboard() {
 
       setMenuItems(apiItems);
 
-      const menuMap = new Map<number, any>(apiItems.map((item: any) => [item.id, item]));
-
-      const mergedOrders = data.map((order) => {
-        let recalcSubtotal = 0;
-        
-        const items = order.items.map((it) => {
-          const idNum = Number(it.id) || Number(it.id.replace(/\D/g, "")) || 0;
-          const menuItem = menuMap.get(idNum);
-
-          let price = it.price;
-          
-          if (menuItem) {
-            price = menuItem.offerPrice !== null && menuItem.offerPrice !== undefined && menuItem.offerPrice < menuItem.price
-              ? menuItem.offerPrice
-              : menuItem.price;
-
-            const isHot = menuItem.categoryId === 1 || (menuItem.categoryName || "").toLowerCase().includes("hot");
-            if (isHot) {
-              price = Math.min(price, PROMO_HOT_PRICE);
-            }
-          }
-          
-          recalcSubtotal += price * it.qty;
-
-          return {
-            ...it,
-            price,
-          };
-        });
-
-        // Always recalculate totals locally to reflect discounted prices
-        const discount = order.savings || 0;
-        const totalAmount = Math.max(0, recalcSubtotal - discount);
-
-        return {
-          ...order,
-          items,
-          subtotal: recalcSubtotal,
-          total: totalAmount,
-          savings: discount,
-          paid: order.paid,
-          paymentMethod: order.paymentMethod,
-        };
-      });
-
-      setOrders(mergedOrders);
+      setOrders(data);
     } catch (err) {
       console.error("Admin dashboard load error:", err);
     } finally {
