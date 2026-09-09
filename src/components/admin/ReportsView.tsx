@@ -325,34 +325,47 @@ export default function ReportsView({ orders }: ReportsViewProps) {
                 </div>
               </div>
             ) : (
-              /* Weekly/Monthly/Yearly: show bar chart grouped by orders */
-              <div className="h-56 flex items-end gap-1 border-b border-l border-[#e8dfd5] px-2 pb-0">
-                {filteredOrders.length === 0 ? (
-                  <p className="text-xs text-[#8B7355] m-auto">No data for this period.</p>
-                ) : (
-                  (() => {
-                    // Group by day
-                    const dayMap = new Map<string, number>();
-                    filteredOrders.forEach(o => {
-                      const d = parseOrderDate(o.createdAt);
-                      const key = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
-                      dayMap.set(key, (dayMap.get(key) || 0) + (o.total || 0));
-                    });
-                    const entries = Array.from(dayMap.entries()).slice(-14);
-                    const max = Math.max(...entries.map(([, v]) => v), 1);
-                    return entries.map(([label, val]) => (
-                      <div key={label} className="flex-1 flex flex-col items-center gap-1 group">
-                        <div
-                          className="w-full bg-[#D4AF37] rounded-t-md transition-all group-hover:bg-[#c4a130]"
-                          style={{ height: `${(val / max) * 100}%`, minHeight: val > 0 ? "4px" : "0" }}
-                          title={`${label}: ${rupee(val)}`}
-                        />
-                        <span className="text-[8px] text-[#8B7355] font-semibold">{label.split(" ")[0]}</span>
-                      </div>
-                    ));
-                  })()
-                )}
-              </div>
+              /* Weekly/Monthly/Yearly: proper bar chart with y-axis */
+              (() => {
+                const dayMap = new Map<string, number>();
+                filteredOrders.forEach(o => {
+                  const d = parseOrderDate(o.createdAt);
+                  const key = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+                  dayMap.set(key, (dayMap.get(key) || 0) + (o.total || 0));
+                });
+                const entries = Array.from(dayMap.entries()).slice(-14);
+                const max = Math.max(...entries.map(([, v]) => v), 1);
+
+                if (entries.length === 0) {
+                  return <p className="text-xs text-[#8B7355] text-center py-12">No data for this period.</p>;
+                }
+
+                return (
+                  <div className="flex gap-2 h-48 mt-2">
+                    {/* Y-axis */}
+                    <div className="flex flex-col justify-between text-[10px] text-[#8B7355] font-semibold py-1 shrink-0 w-10 text-right">
+                      <span>{max >= 1000 ? `₹${(max/1000).toFixed(1)}K` : `₹${max}`}</span>
+                      <span>{Math.round(max/2) >= 1000 ? `₹${(Math.round(max/2)/1000).toFixed(1)}K` : `₹${Math.round(max/2)}`}</span>
+                      <span>₹0</span>
+                    </div>
+                    {/* Bars */}
+                    <div className="flex-1 flex items-end gap-1 border-b border-l border-[#e8dfd5] pb-0 pt-2 overflow-x-auto">
+                      {entries.map(([label, val]) => (
+                        <div key={label} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group min-w-[20px]">
+                          <div
+                            className="w-full bg-[#D4AF37] rounded-t-md transition-all group-hover:bg-[#c4a130]"
+                            style={{ height: `${(val / max) * 100}%`, minHeight: val > 0 ? "6px" : "0" }}
+                            title={`${label}: ${rupee(val)}`}
+                          />
+                          <span className="text-[8px] text-[#8B7355] font-semibold whitespace-nowrap">
+                            {label.split(" ")[0]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()
             )}
           </div>
 
@@ -427,32 +440,38 @@ export default function ReportsView({ orders }: ReportsViewProps) {
               <h3 className="font-bold text-[#2C1810] mb-1">Revenue by category</h3>
               <p className="text-xs text-[#8B7355] mb-4">Real breakdown</p>
 
-              <div className="h-36 flex items-end gap-3 border-b border-l border-[#e8dfd5] px-2 pb-0 pt-4 relative">
-                <div className="absolute left-[-2px] top-0 h-full flex flex-col justify-between text-[10px] text-[#8B7355] font-semibold py-2">
+              {/* Y-axis + bars in a proper row layout so labels don't overlap bars */}
+              <div className="flex gap-2 h-36">
+                {/* Y-axis labels */}
+                <div className="flex flex-col justify-between text-[10px] text-[#8B7355] font-semibold py-1 shrink-0 w-10 text-right">
                   <span>{maxCatRev >= 1000 ? `₹${(maxCatRev/1000).toFixed(1)}K` : `₹${maxCatRev}`}</span>
                   <span>{Math.round(maxCatRev/2) >= 1000 ? `₹${(Math.round(maxCatRev/2)/1000).toFixed(1)}K` : `₹${Math.round(maxCatRev/2)}`}</span>
                   <span>₹0</span>
                 </div>
-                {[
-                  { key: "hot", label: "Hot", color: "#D4AF37" },
-                  { key: "cold", label: "Cold", color: "#5C3A21" },
-                  { key: "shakes", label: "Shakes", color: "#E8D399" },
-                  { key: "bites", label: "Bites", color: "#8B5A2B" },
-                ].map(({ key, label, color }) => {
-                  const val = categoryRevenue[key] || 0;
-                  const pct = (val / maxCatRev) * 100;
-                  return (
-                    <div key={key} className="flex-1 flex flex-col items-center gap-1">
-                      <div
-                        className="w-full rounded-t-md transition-all"
-                        style={{ height: `${pct}%`, background: color, minHeight: val > 0 ? "4px" : "0" }}
-                        title={`${label}: ${rupee(val)}`}
-                      />
-                    </div>
-                  );
-                })}
+                {/* Bars area */}
+                <div className="flex-1 flex items-end gap-3 border-b border-l border-[#e8dfd5] pb-0 pt-2">
+                  {[
+                    { key: "hot", label: "Hot Coffee", color: "#D4AF37" },
+                    { key: "cold", label: "Cold", color: "#5C3A21" },
+                    { key: "shakes", label: "Shakes", color: "#E8D399" },
+                    { key: "bites", label: "Bites", color: "#8B5A2B" },
+                  ].map(({ key, label, color }) => {
+                    const val = categoryRevenue[key] || 0;
+                    const pct = (val / maxCatRev) * 100;
+                    return (
+                      <div key={key} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                        <div
+                          className="w-full rounded-t-md transition-all"
+                          style={{ height: `${pct}%`, background: color, minHeight: val > 0 ? "6px" : "0" }}
+                          title={`${label}: ${rupee(val)}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex justify-around mt-2 text-[11px] font-bold text-[#2C1810]">
+
+              <div className="flex justify-around mt-2 ml-12 text-[11px] font-bold text-[#2C1810]">
                 {[
                   { key: "hot", label: "Hot Coffee", color: "#D4AF37" },
                   { key: "cold", label: "Cold", color: "#5C3A21" },
