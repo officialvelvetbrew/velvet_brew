@@ -206,7 +206,12 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
       onClose();
     } catch (err: any) {
       console.error("Edit order error:", err);
-      setError(err?.message || "Failed to update order items");
+      const errMsg: string = err?.message || "";
+      if (errMsg.includes("500") || errMsg.includes("unexpected")) {
+        setError("Server error: Backend team ko is endpoint ka bug fix karna hoga (PATCH /customer/orders 500). Frontend payload correct hai.");
+      } else {
+        setError(errMsg || "Failed to update order items");
+      }
     } finally {
       setSubmitting(false);
     }
