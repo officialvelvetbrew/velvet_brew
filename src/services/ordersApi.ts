@@ -1,6 +1,6 @@
 import type { Order, OrderStatus, CategoryId, PaymentMethod } from "../types";
 import { SAMPLE_ORDERS } from "../data/sampleOrders";
-import { getAuthToken } from "../services/adminAuth";
+import { getAuthToken, logout } from "../services/adminAuth";
 
 /**
  * ---------------------------------------------------------------
@@ -173,6 +173,10 @@ export async function fetchOrders(): Promise<Order[]> {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}/customer/orders`, { headers });
+  if (res.status === 401 || res.status === 403) {
+    logout();
+    throw new Error("Session expired. Please log in again.");
+  }
   if (!res.ok) throw new Error("Failed to fetch orders");
   const result = await res.json();
 
@@ -201,6 +205,10 @@ export async function fetchCustomers(): Promise<any> {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}/admin/customers`, { headers });
+  if (res.status === 401 || res.status === 403) {
+    logout();
+    throw new Error("Session expired. Please log in again.");
+  }
   if (!res.ok) throw new Error("Failed to fetch customers");
   const result = await res.json();
   

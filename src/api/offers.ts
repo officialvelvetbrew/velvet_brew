@@ -1,4 +1,4 @@
-import { getAuthToken } from "../services/adminAuth";
+import { getAuthToken, logout } from "../services/adminAuth";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? "https://api.velvetbrew.in/api/v1" : "/api/v1");
 
@@ -32,6 +32,10 @@ export async function getAdminOffers(): Promise<ApiOffer[]> {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const response = await fetch(`${BASE_URL}/admin/offers`, { headers });
+  if (response.status === 401 || response.status === 403) {
+    logout();
+    throw new Error("Session expired. Please log in again.");
+  }
   if (!response.ok) throw new Error("Failed to fetch admin offers");
   
   // No ApiResponse wrapper
