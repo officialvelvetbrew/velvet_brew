@@ -1,78 +1,43 @@
 import { useState, useEffect, useMemo } from "react";
 import { Users, IndianRupee, Search } from "lucide-react";
-import { fetchOrders } from "../../services/ordersApi";
-import type { Order } from "../../types";
+import { fetchCustomers } from "../../services/ordersApi";
 import { rupee } from "../../utils/currency";
 
 export default function CustomersView() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [data, setData] = useState<{
+    totalCustomers: number;
+    lifetimeRevenue: number;
+    customers: any[];
+  }>({ totalCustomers: 0, lifetimeRevenue: 0, customers: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchOrders().then(data => {
-      setOrders(data);
+    fetchCustomers().then(res => {
+      setData(res || { totalCustomers: 0, lifetimeRevenue: 0, customers: [] });
       setLoading(false);
     }).catch(err => {
-      console.error("Failed to load orders for customers view:", err);
+      console.error("Failed to load customers view:", err);
       setLoading(false);
     });
   }, []);
 
-  const customers = useMemo(() => {
-    const map = new Map<string, {
-      name: string;
-      mobile: string;
-      lifetimeSpend: number;
-      visits: number;
-      lastVisit: string;
-    }>();
-
-    orders.forEach(order => {
-      const phone = order.phone || "Unknown";
-      const name = order.customerName || "Unknown";
-      const spend = order.total || 0;
-      const date = order.createdAt;
-
-      if (!map.has(phone)) {
-        map.set(phone, {
-          name,
-          mobile: phone,
-          lifetimeSpend: 0,
-          visits: 0,
-          lastVisit: date
-        });
-      }
-
-      const curr = map.get(phone)!;
-      curr.lifetimeSpend += spend;
-      curr.visits += 1;
-      
-      if (new Date(date) > new Date(curr.lastVisit)) {
-        curr.lastVisit = date;
-      }
-      
-      if (curr.name === "Unknown" && name !== "Unknown") {
-        curr.name = name;
-      }
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.lifetimeSpend - a.lifetimeSpend);
-  }, [orders]);
+  const customers = data.customers || [];
 
   const filteredCustomers = useMemo(() => {
     if (!searchQuery) return customers;
     const q = searchQuery.toLowerCase();
     return customers.filter(c => 
-      c.name.toLowerCase().includes(q) || 
-      c.mobile.toLowerCase().includes(q)
+      (c.fullName || "").toLowerCase().includes(q) || 
+      (c.mobile || "").toLowerCase().includes(q)
     );
   }, [customers, searchQuery]);
 
-  const totalCustomers = customers.length;
-  const lifetimeRevenue = customers.reduce((sum, c) => sum + c.lifetimeSpend, 0);
+  const totalCustomers = data.totalCustomers || customers.length;
+  const lifetimeRevenue = data.lifetimeRevenue || customers.reduce((sum, c) => sum + (c.lifetimeSpend || 0), 0);
 
-  const formatAge = (dateStr: string) => {
+  const formatAge = (dateStr: string | null) => {
+    if (!dateStr) return "Never";
     const d = new Date(dateStr);
     const ms = Date.now() - d.getTime();
     const mins = Math.max(0, Math.floor(ms / 60000));
@@ -158,23 +123,23 @@ export default function CustomersView() {
               <tbody className="divide-y divide-[#f3eee7]">
                 {filteredCustomers.length > 0 ? (
                   filteredCustomers.map((c) => (
-                    <tr key={c.mobile} className="hover:bg-[#fdfbf7] transition-colors">
+                    <tr key={c.id || c.mobile} className="hover:bg-[#fdfbf7] transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 shrink-0 rounded-full bg-[#E8DFD5] text-[#8B7355] flex items-center justify-center font-bold text-[14px]">
-                            {getInitials(c.name)}
+                            {getInitials(c.fullName)}
                           </div>
                           <div>
-                            <p className="font-bold text-[#2C1810] text-[14px]">{c.name}</p>
-                            <p className="text-[#8B7355] text-[12px]">{c.mobile}</p>
+                            <p className="font-bold text-[#2C1810] text-[14px]">{c.fullName || "Unknown"}</p>
+                            <p className="text-[#8B7355] text-[12px]">{c.mobile || "No Mobile"}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <span className="font-bold text-[#2C1810]">{rupee(c.lifetimeSpend)}</span>
+                        <span className="font-bold text-[#2C1810]">{rupee(c.lifetimeSpend || 0)}</span>
                       </td>
                       <td className="px-5 py-4 text-center">
-                        <span className="text-[#8B7355]">{c.visits}</span>
+                        <span className="text-[#8B7355]">{c.totalVisits || 0}</span>
                       </td>
                       <td className="px-5 py-4">
                         <span className="text-[#8B7355]">{formatAge(c.lastVisit)}</span>

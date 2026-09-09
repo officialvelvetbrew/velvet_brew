@@ -190,6 +190,23 @@ export async function fetchOrders(): Promise<Order[]> {
     .map(mapBackendOrderToFrontend);
 }
 
+/** Fetch all customers from the admin API. */
+export async function fetchCustomers(): Promise<any> {
+  if (USE_MOCK) {
+    return { totalCustomers: 0, lifetimeRevenue: 0, customers: [] };
+  }
+
+  const token = getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}/admin/customers`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch customers");
+  const result = await res.json();
+  
+  return result.data;
+}
+
 /** Create a new order (called from the customer checkout flow). */
 export async function createOrder(order: Order): Promise<Order> {
   if (order.id && order.paymentMethod) {
