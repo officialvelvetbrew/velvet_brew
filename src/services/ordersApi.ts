@@ -301,7 +301,11 @@ function mapOrderToBackendPayload(order: Order) {
   };
 }
 
-/** Replace order items and re-price (called when admin edits an existing order) */
+/** Replace order items and re-price (called when admin edits an existing order).
+ *  LLD: PATCH /customer/orders?orderNumber=XX
+ *  Auth: ADMIN or STAFF required.
+ *  Behaviour: Replaces items list and re-prices. Does NOT update status/customer tag.
+ */
 export async function updateOrderItems(order: Order, newItems: any[]): Promise<Order | null> {
   if (USE_MOCK) {
     const orders = readStore();
@@ -309,50 +313,51 @@ export async function updateOrderItems(order: Order, newItems: any[]): Promise<O
     if (idx === -1) return null;
     const subtotal = newItems.reduce((sum: number, item: any) => sum + item.price * item.qty, 0);
     const total = Math.max(0, subtotal - (order.savings || 0));
-    orders[idx] = {
-      ...order,
-      items: newItems,
-      subtotal,
-      total,
-    };
+    orders[idx] = { ...order, items: newItems, subtotal, total };
     writeStore(orders);
     return orders[idx];
   }
 
   const token = getAuthToken();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (!token) throw new Error("Not authenticated");
 
-  const fullName = (order.customerName || "").trim() || "Walk-in Guest";
-  const rawMobile = (order.phone || "").replace(/\D/g, "");
-  const mobile = rawMobile.length >= 10 ? rawMobile : "9876543210";
-
-  const payload = {
-    customer: {
-      fullName,
-      mobile,
-      email: order.email || "",
-    },
-    items: newItems.map((item: any) => {
-      const rawId = String(item.id || "");
-      const menuId = Number(rawId) || Number(rawId.replace(/\D/g, "")) || 0;
-      return {
-        menuId,
-        quantity: item.qty,
-      };
-    }),
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
   };
 
-  console.log("Sending PATCH /customer/orders payload:", JSON.stringify(payload));
+  const mappedItems = newItems.map((item: any) => {
+    const rawId = String(item.id || "");
+    const menuId = Number(rawId) || Number(rawId.replace(/\D/g, "")) || 0;
+    return { menuId, quantity: item.qty };
+  });
 
-  const res = await fetch(
+  // ── Attempt 1: items-only payload (no customer field) ──────────────────────
+  const minimalPayload = { items: mappedItems };
+  console.log("[updateOrderItems] Attempt 1 – items only:", JSON.stringify(minimalPayload));
+
+  let res = await fetch(
     `${API_BASE}/customer/orders?orderNumber=${encodeURIComponent(order.id)}`,
-    {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify(payload),
-    }
+    { method: "PATCH", headers, body: JSON.stringify(minimalPayload) }
   );
+
+  // ── Attempt 2: with customer (full payload) if attempt 1 was 4xx/5xx ──────
+  if (!res.ok && res.status !== 401 && res.status !== 403) {
+    const fullName = (order.customerName || "").trim() || "Walk-in Guest";
+    const rawMobile = (order.phone || "").replace(/\D/g, "");
+    const mobile = rawMobile.length >= 10 ? rawMobile : "9876543210";
+
+    const fullPayload = {
+      customer: { fullName, mobile, email: order.email || "" },
+      items: mappedItems,
+    };
+    console.log("[updateOrderItems] Attempt 2 – full payload:", JSON.stringify(fullPayload));
+
+    res = await fetch(
+      `${API_BASE}/customer/orders?orderNumber=${encodeURIComponent(order.id)}`,
+      { method: "PATCH", headers, body: JSON.stringify(fullPayload) }
+    );
+  }
 
   if (res.status === 401 || res.status === 403) {
     logout();
@@ -361,11 +366,12 @@ export async function updateOrderItems(order: Order, newItems: any[]): Promise<O
 
   if (!res.ok) {
     const errorText = await res.text();
-    console.error("Update order items failed:", res.status, errorText);
-    throw new Error(`Failed to update order items (${res.status})`);
+    console.error("[updateOrderItems] All attempts failed:", res.status, errorText);
+    throw new Error(`Failed to update order items (${res.status}): ${errorText}`);
   }
 
   const result = await res.json();
+  console.log("[updateOrderItems] Success:", result);
   return result?.data ? mapBackendOrderToFrontend(result.data) : null;
 }
 
