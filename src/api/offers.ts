@@ -108,7 +108,11 @@ export interface PublicOffer {
 export async function getActiveOffers(): Promise<PublicOffer[]> {
   const response = await fetch(`${BASE_URL}/customer/offers`);
   if (!response.ok) throw new Error("Failed to fetch active offers");
-  return await response.json();
+  const result = await response.json();
+  if (Array.isArray(result)) return result;
+  if (result && Array.isArray(result.data)) return result.data;
+  if (result && Array.isArray(result.offers)) return result.offers;
+  return [];
 }
 
 export interface ValidateOfferRequest {
