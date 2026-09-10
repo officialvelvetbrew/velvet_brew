@@ -215,6 +215,61 @@ export async function fetchCustomers(): Promise<any> {
   return result.data;
 }
 
+/** Fetch order history for a specific customer. */
+export async function fetchCustomerOrders(mobile: string, customerId?: string): Promise<Order[]> {
+  if (USE_MOCK) {
+    const all = readStore();
+    const cleanMobile = mobile.replace(/\D/g, "");
+    return all
+      .filter((o) => {
+        const oMobile = (o.phone || "").replace(/\D/g, "");
+        if (cleanMobile && oMobile) return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
+        return false;
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  const token = getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  try {
+    const cleanMobile = mobile.replace(/\D/g, "");
+    // Try endpoint if backend has direct route
+    const res = await fetch(`${API_BASE}/customer/orders?mobile=${encodeURIComponent(mobile)}`, { headers });
+    if (res.ok) {
+      const result = await res.json();
+      let rawOrders: any[] = [];
+      if (Array.isArray(result)) rawOrders = result;
+      else if (result && Array.isArray(result.data)) rawOrders = result.data;
+      else if (result && Array.isArray(result.orders)) rawOrders = result.orders;
+
+      if (rawOrders.length > 0) {
+        const mapped = rawOrders
+          .filter((o) => o.paymentStatus?.toUpperCase() !== "FAILED")
+          .map(mapBackendOrderToFrontend);
+        const filtered = mapped.filter((o) => {
+          const oMobile = (o.phone || "").replace(/\D/g, "");
+          if (!cleanMobile || !oMobile) return true;
+          return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
+        });
+        if (filtered.length > 0) return filtered;
+      }
+    }
+  } catch (err) {
+    console.warn("Direct customer orders endpoint fetch failed, falling back to all orders filter:", err);
+  }
+
+  // Fallback to fetchOrders() filtered by customer phone
+  const allOrders = await fetchOrders();
+  const cleanMobile = mobile.replace(/\D/g, "");
+  return allOrders.filter((o) => {
+    const oMobile = (o.phone || "").replace(/\D/g, "");
+    if (!cleanMobile) return true;
+    return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
+  });
+}
+
 /** Create a new order (called from the customer checkout flow). */
 export async function createOrder(order: Order): Promise<Order> {
   if (order.id && order.paymentMethod) {

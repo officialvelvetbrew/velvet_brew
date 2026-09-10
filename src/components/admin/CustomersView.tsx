@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Users, IndianRupee, Search } from "lucide-react";
 import { fetchCustomers } from "../../services/ordersApi";
 import { rupee } from "../../utils/currency";
+import CustomerManageModal from "./CustomerManageModal";
 
 export default function CustomersView() {
   const [data, setData] = useState<{
@@ -11,6 +12,7 @@ export default function CustomersView() {
   }>({ totalCustomers: 0, lifetimeRevenue: 0, customers: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
 
   useEffect(() => {
     fetchCustomers().then(res => {
@@ -145,7 +147,10 @@ export default function CustomersView() {
                         <span className="text-[#8B7355]">{formatAge(c.lastVisit)}</span>
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <button className="rounded-lg border border-[#e8dfd5] px-4 py-1.5 text-[12px] font-semibold text-[#2C1810] hover:bg-[#f3eee7] transition-colors">
+                        <button
+                          onClick={() => setSelectedCustomer(c)}
+                          className="rounded-lg border border-[#e8dfd5] px-4 py-1.5 text-[12px] font-semibold text-[#2C1810] hover:bg-[#f3eee7] transition-colors"
+                        >
                           Manage
                         </button>
                       </td>
@@ -164,6 +169,13 @@ export default function CustomersView() {
         </div>
 
       </div>
+
+      {selectedCustomer && (
+        <CustomerManageModal
+          customer={selectedCustomer}
+          onClose={() => setSelectedCustomer(null)}
+        />
+      )}
     </div>
   );
 }
