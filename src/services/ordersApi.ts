@@ -217,14 +217,15 @@ export async function fetchCustomers(): Promise<any> {
 
 /** Fetch order history for a specific customer. */
 export async function fetchCustomerOrders(mobile: string, customerId?: string): Promise<Order[]> {
+  const cleanMobile = (mobile || "").replace(/\D/g, "");
+
   if (USE_MOCK) {
     const all = readStore();
-    const cleanMobile = mobile.replace(/\D/g, "");
     return all
       .filter((o) => {
         const oMobile = (o.phone || "").replace(/\D/g, "");
-        if (cleanMobile && oMobile) return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
-        return false;
+        if (!cleanMobile || !oMobile) return false;
+        return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
@@ -234,8 +235,6 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   try {
-    const cleanMobile = mobile.replace(/\D/g, "");
-    // Try endpoint if backend has direct route
     const res = await fetch(`${API_BASE}/customer/orders?mobile=${encodeURIComponent(mobile)}`, { headers });
     if (res.ok) {
       const result = await res.json();
@@ -250,10 +249,10 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
           .map(mapBackendOrderToFrontend);
         const filtered = mapped.filter((o) => {
           const oMobile = (o.phone || "").replace(/\D/g, "");
-          if (!cleanMobile || !oMobile) return true;
+          if (!cleanMobile || !oMobile) return false;
           return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
         });
-        if (filtered.length > 0) return filtered;
+        return filtered;
       }
     }
   } catch (err) {
@@ -262,10 +261,9 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
 
   // Fallback to fetchOrders() filtered by customer phone
   const allOrders = await fetchOrders();
-  const cleanMobile = mobile.replace(/\D/g, "");
   return allOrders.filter((o) => {
     const oMobile = (o.phone || "").replace(/\D/g, "");
-    if (!cleanMobile) return true;
+    if (!cleanMobile || !oMobile) return false;
     return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
   });
 }

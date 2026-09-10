@@ -187,7 +187,7 @@ export default function CustomerManageModal({ customer, onClose }: CustomerManag
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-[#2C1810] text-sm">#{order.id}</span>
                         <span className="text-xs text-[#8B7355]">
-                          • {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          • {new Date(order.createdAt.endsWith('Z') ? order.createdAt : order.createdAt + 'Z').toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -210,12 +210,15 @@ export default function CustomerManageModal({ customer, onClose }: CustomerManag
 
                     {/* Payment & Total */}
                     <div className="flex items-center justify-between pt-1 border-t border-[#f3eee7]">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="font-bold uppercase text-[#8B7355]">{order.paymentMethod}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${order.paid ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                          {order.paid ? "PAID" : "UNPAID"}
-                        </span>
-                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                        order.paymentMethod === 'upi'
+                          ? 'bg-violet-50 text-violet-700 border border-violet-200'
+                          : order.paymentMethod === 'card'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'bg-[#f3eee7] text-[#8B7355] border border-[#e8dfd5]'
+                      }`}>
+                        {order.paymentMethod === 'upi' ? '⚡ UPI' : order.paymentMethod === 'card' ? '💳 Card' : '💵 Cash'}
+                      </span>
                       <span className="text-sm font-bold text-[#2C1810]">
                         {rupee(order.total || 0)}
                       </span>

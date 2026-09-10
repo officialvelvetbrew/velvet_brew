@@ -40,7 +40,9 @@ export default function CustomersView() {
 
   const formatAge = (dateStr: string | null) => {
     if (!dateStr) return "Never";
-    const d = new Date(dateStr);
+    // Backend sends UTC timestamps without Z suffix — force UTC parsing
+    const utcStr = dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
+    const d = new Date(utcStr);
     const ms = Date.now() - d.getTime();
     const mins = Math.max(0, Math.floor(ms / 60000));
     
