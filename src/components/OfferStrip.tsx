@@ -10,10 +10,11 @@ const DEFAULT_OFFERS: PublicOffer[] = [
   {
     code: "VELVET10",
     name: "Flat 10% off everything",
-    description: "No minimum spend. Applied automatically at checkout for the first seven days.",
+    description: "No minimum spend. Applied automatically at checkout.",
     discountType: "PERCENTAGE",
     discountValue: 10,
     minOrderAmount: 0,
+    emoji: "🎉",
   },
 ];
 
@@ -66,27 +67,43 @@ export default function OfferStrip({ promoPrice }: OfferStripProps) {
     }
   };
 
+  // Helper to extract custom emoji
+  const getOfferEmoji = (off: PublicOffer) => {
+    if (off.emoji && off.emoji.trim()) return off.emoji.trim();
+    if (off.description) {
+      const match = off.description.match(/^\[(.+?)\]\s*/);
+      if (match) return match[1];
+    }
+    return "🎉";
+  };
+
   // Helper to format heading title
   const getOfferHeadline = (off: PublicOffer) => {
-    if (off.name && (off.name.toLowerCase().includes("off") || off.name.toLowerCase().includes("flat"))) {
+    if (off.name && off.name.trim()) {
       return off.name;
     }
     if (off.discountType === "PERCENTAGE") {
-      return `Flat ${off.discountValue}% off ${off.name || "everything"}`;
+      return `${off.discountValue}% off`;
     }
-    return `Flat ₹${off.discountValue} off ${off.name || "your order"}`;
+    return `Flat ₹${off.discountValue} off`;
   };
 
   // Helper to format subtitle description
   const getOfferSubtitle = (off: PublicOffer) => {
-    if (off.description && off.description.trim()) {
-      return off.description;
+    let desc = off.description || "";
+    if (desc.startsWith("[")) {
+      desc = desc.replace(/^\[.+?\]\s*/, "");
+    }
+    if (desc && desc.trim()) {
+      return desc;
     }
     if (off.minOrderAmount > 0) {
-      return `Valid on minimum order of ₹${off.minOrderAmount}. Use code ${off.code} at checkout.`;
+      return `Flat ${off.discountType === 'PERCENTAGE' ? `${off.discountValue}%` : `₹${off.discountValue}`} off on orders above ${off.minOrderAmount}`;
     }
     return `No minimum spend. Use coupon code ${off.code} at checkout to claim!`;
   };
+
+  const currentEmoji = getOfferEmoji(currentOffer);
 
   return (
     <section id="offer" className="px-4 sm:px-6 md:px-10 py-4">
@@ -95,7 +112,7 @@ export default function OfferStrip({ promoPrice }: OfferStripProps) {
           background: "radial-gradient(135% 100% at 50% 0%, #2A1A12 0%, #150C08 100%)",
         }}
       >
-        {/* Subtle Coffee Bean / Pattern Overlay */}
+        {/* Subtle Pattern Overlay */}
         <div 
           className="absolute inset-0 opacity-[0.04] pointer-events-none"
           style={{
@@ -106,28 +123,24 @@ export default function OfferStrip({ promoPrice }: OfferStripProps) {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6">
           
-          {/* Left Content Area: Icon + Badges + Headline + Description */}
+          {/* Left Content Area: Custom Emoji + Code Badge + Headline + Description */}
           <div className="flex items-start gap-4 sm:gap-6 flex-1">
-            {/* Party Popper Icon */}
+            {/* Custom Emoji Icon */}
             <div className="text-4xl sm:text-5xl shrink-0 select-none animate-bounce duration-1000">
-              🎉
+              {currentEmoji}
             </div>
 
             <div className="space-y-2">
-              {/* Badges Row */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="bg-white/10 backdrop-blur-md text-[#E5D7C5] font-extrabold text-[10px] sm:text-[11px] uppercase tracking-widest px-3 py-1 rounded-full border border-white/10">
-                  OPENING OFFER
-                </span>
-
-                <span className="bg-[#2A1C14] text-[#E8C575] font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider px-3 py-1 rounded-full border border-[#D4AF37]/30 flex items-center gap-1.5 shadow-sm">
+              {/* Badges Row (Coupon Code only) */}
+              <div className="flex items-center gap-2">
+                <span className="bg-[#2A1C14] text-[#E8C575] font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider px-3.5 py-1 rounded-full border border-[#D4AF37]/30 flex items-center gap-1.5 shadow-sm">
                   <Tag size={12} className="text-[#D4AF37]" />
                   {currentOffer.code}
                 </span>
               </div>
 
               {/* Title */}
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#FDFBF7] tracking-tight leading-tight">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FDFBF7] tracking-tight leading-tight">
                 {getOfferHeadline(currentOffer)}
               </h2>
 

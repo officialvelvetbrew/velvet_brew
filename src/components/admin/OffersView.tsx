@@ -11,7 +11,7 @@ export default function OffersView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState<ApiOffer | null>(null);
   
-  const initialFormData: CreateOfferRequest = {
+  const initialFormData: CreateOfferRequest & { emoji?: string } = {
     code: "",
     name: "",
     description: "",
@@ -23,7 +23,10 @@ export default function OffersView() {
     endsAt: null,
     maxUsesTotal: null,
     maxUsesPerCustomer: null,
+    emoji: "🎉",
   };
+
+  const EMOJI_OPTIONS = ["🎉", "☕", "🔥", "⚡", "🎁", "🏷️", "🥳", "🍩", "🍕", "🍔", "🥤", "🌟", "💥"];
   
   const [formData, setFormData] = useState<CreateOfferRequest>(initialFormData);
   const [isActiveToggle, setIsActiveToggle] = useState(true);
@@ -55,10 +58,17 @@ export default function OffersView() {
 
   const openEditModal = (off: ApiOffer) => {
     setEditingOffer(off);
+    let extractedEmoji = off.emoji || "🎉";
+    let cleanDesc = off.description || "";
+    const match = cleanDesc.match(/^\[(.+?)\]\s*/);
+    if (match) {
+      extractedEmoji = match[1];
+      cleanDesc = cleanDesc.replace(/^\[.+?\]\s*/, "");
+    }
     setFormData({
       code: off.code,
       name: off.name,
-      description: off.description || "",
+      description: cleanDesc,
       discountType: off.discountType,
       discountValue: off.discountValue,
       maxDiscountAmount: off.maxDiscountAmount || null,
@@ -67,6 +77,7 @@ export default function OffersView() {
       endsAt: off.endsAt ? off.endsAt.substring(0, 16) : null,
       maxUsesTotal: off.maxUsesTotal || null,
       maxUsesPerCustomer: off.maxUsesPerCustomer || null,
+      emoji: extractedEmoji,
     });
     setIsActiveToggle(off.active);
     setIsModalOpen(true);
@@ -97,6 +108,12 @@ export default function OffersView() {
       if (!payload.maxUsesPerCustomer) payload.maxUsesPerCustomer = null;
       if (!payload.startsAt) payload.startsAt = null; else payload.startsAt += ":00";
       if (!payload.endsAt) payload.endsAt = null; else payload.endsAt += ":00";
+
+      // Encode emoji in description for backward compatibility
+      const rawDesc = (formData.description || "").replace(/^\[.+?\]\s*/, "");
+      const selectedEmoji = (formData as any).emoji || "🎉";
+      payload.description = `[${selectedEmoji}] ${rawDesc}`;
+      payload.emoji = selectedEmoji;
 
       if (editingOffer) {
         await updateOffer(editingOffer.id, { ...payload, active: isActiveToggle });
@@ -235,6 +252,33 @@ export default function OffersView() {
                     className="w-full px-4 py-3 rounded-xl border border-[#8B7355]/30 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none bg-white font-medium"
                     placeholder="e.g. Summer Special 50% Off"
                   />
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-[#8B7355] uppercase tracking-wider mb-2">Banner Emoji (Custom Icon)</label>
+                <div className="flex items-center gap-3 flex-wrap bg-white p-3 rounded-2xl border border-[#8B7355]/30">
+                  <input
+                    type="text"
+                    maxLength={5}
+                    value={(formData as any).emoji || "🎉"}
+                    onChange={(e) => setFormData({ ...formData, emoji: e.target.value } as any)}
+                    className="w-14 h-11 text-center text-2xl rounded-xl border border-[#8B7355]/20 focus:border-[#D4AF37] outline-none font-bold bg-[#FDFBF7]"
+                  />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {EMOJI_OPTIONS.map((emo) => (
+                      <button
+                        key={emo}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, emoji: emo } as any)}
+                        className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-transform hover:scale-110 ${
+                          (formData as any).emoji === emo ? "bg-[#2C1810] text-white shadow-sm" : "bg-[#FDFBF7] border border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        {emo}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

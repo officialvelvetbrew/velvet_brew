@@ -17,6 +17,7 @@ export interface ApiOffer {
   maxUsesPerCustomer?: number | null;
   currentUses: number;
   active: boolean;
+  emoji?: string;
   createdAt: string;
   updatedAt: string;
 }
