@@ -104,6 +104,7 @@ export interface PublicOffer {
   maxDiscountAmount?: number | null;
   minOrderAmount: number;
   endsAt?: string | null;
+  emoji?: string;
 }
 
 export async function getActiveOffers(): Promise<PublicOffer[]> {
