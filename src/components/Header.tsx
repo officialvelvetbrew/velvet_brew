@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { ShoppingBag, User2, MapPin } from 'lucide-react';
 import { COLORS } from '../data/colors';
 import logo from '../assets/velvet-brew-logo.jpg';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useCustomerAuth, signInWithGoogle, logoutCustomer } from '../services/customerAuth';
 
 const LINKS = [
   { id: 'menu', label: 'Menu' },
   { id: 'offers', label: 'Offers' },
   { id: 'visit', label: 'Visit Us' },
+  { id: 'blogs', label: 'Blogs' },
 ];
 
 export default function Header({
@@ -59,7 +60,7 @@ export default function Header({
           {LINKS.map((l) => (
             <a
               key={l.id}
-              href={`#${l.id}`}
+              href={l.id === 'blogs' ? '/blogs' : "/#$($l.id)"}
               className="rounded-xl px-3.5 py-2 text-[13px] font-semibold uppercase tracking-wider transition-colors"
               style={{ color: 'rgba(253, 251, 247, 0.7)' }}
               onMouseEnter={(e) => {
@@ -186,3 +187,4 @@ export default function Header({
     </header>
   );
 }
+

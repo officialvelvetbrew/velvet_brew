@@ -169,8 +169,8 @@ export async function fetchOrders(): Promise<Order[]> {
     );
   }
 
-  let token = localStorage.getItem("vb_customer_token") || getAuthToken();
-  if (!token && auth.currentUser) {
+  let customerToken = localStorage.getItem("vb_customer_token");
+  if (!customerToken && auth.currentUser) {
     try {
       const firebaseToken = await auth.currentUser.getIdToken();
       // Exchange Firebase token for Backend JWT
@@ -188,9 +188,9 @@ export async function fetchOrders(): Promise<Order[]> {
       if (exchangeRes.ok) {
         const data = await exchangeRes.json();
         // Handle both with and without ApiResponse envelope
-        token = data?.data?.token || data?.token;
-        if (token) {
-          localStorage.setItem("vb_customer_token", token);
+        customerToken = data?.data?.token || data?.token;
+        if (customerToken) {
+          localStorage.setItem("vb_customer_token", customerToken);
         }
       }
     } catch (e) {
@@ -198,6 +198,7 @@ export async function fetchOrders(): Promise<Order[]> {
     }
   }
 
+  const token = customerToken || getAuthToken();
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -259,8 +260,8 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  let token = localStorage.getItem("vb_customer_token") || getAuthToken();
-  if (!token && auth.currentUser) {
+  let customerToken = localStorage.getItem("vb_customer_token");
+  if (!customerToken && auth.currentUser) {
     try {
       const firebaseToken = await auth.currentUser.getIdToken();
       // Exchange Firebase token for Backend JWT
@@ -278,9 +279,9 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
       if (exchangeRes.ok) {
         const data = await exchangeRes.json();
         // Handle both with and without ApiResponse envelope
-        token = data?.data?.token || data?.token;
-        if (token) {
-          localStorage.setItem("vb_customer_token", token);
+        customerToken = data?.data?.token || data?.token;
+        if (customerToken) {
+          localStorage.setItem("vb_customer_token", customerToken);
         }
       } else {
         console.warn("Backend rejected Firebase token. Status:", exchangeRes.status);
@@ -290,6 +291,7 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
     }
   }
 
+  const token = customerToken || getAuthToken();
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
