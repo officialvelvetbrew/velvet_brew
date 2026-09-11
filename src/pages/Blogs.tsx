@@ -27,7 +27,7 @@ export default function Blogs() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: COLORS.espresso, fontFamily: \"'Jost', sans-serif\" }}>
+    <div className="min-h-screen" style={{ backgroundColor: COLORS.espresso, fontFamily: "'Jost', sans-serif" }}>
       <Header cartCount={0} onOpenCart={() => {}} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 text-white">
