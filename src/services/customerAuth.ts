@@ -24,6 +24,7 @@ export function useCustomerAuth() {
 export async function signInWithGoogle(): Promise<User> {
   try {
     const result = await signInWithPopup(auth, provider);
+    localStorage.removeItem("vb_customer_token");
     return result.user;
   } catch (error) {
     console.error("Error signing in with Google", error);
