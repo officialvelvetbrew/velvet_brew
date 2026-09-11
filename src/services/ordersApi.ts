@@ -169,10 +169,25 @@ export async function fetchOrders(): Promise<Order[]> {
     );
   }
 
-  let token = getAuthToken();
+  let token = localStorage.getItem("vb_customer_token") || getAuthToken();
   if (!token && auth.currentUser) {
     try {
-      token = await auth.currentUser.getIdToken();
+      const firebaseToken = await auth.currentUser.getIdToken();
+      // Exchange Firebase token for Backend JWT
+      const exchangeRes = await fetch(`${API_BASE}/auth/firebase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: firebaseToken })
+      });
+      
+      if (exchangeRes.ok) {
+        const data = await exchangeRes.json();
+        // Handle both with and without ApiResponse envelope
+        token = data?.data?.token || data?.token;
+        if (token) {
+          localStorage.setItem("vb_customer_token", token);
+        }
+      }
     } catch (e) {
       console.error("Failed to get Firebase token for all orders", e);
     }
@@ -239,12 +254,29 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  let token = getAuthToken();
+  let token = localStorage.getItem("vb_customer_token") || getAuthToken();
   if (!token && auth.currentUser) {
     try {
-      token = await auth.currentUser.getIdToken();
+      const firebaseToken = await auth.currentUser.getIdToken();
+      // Exchange Firebase token for Backend JWT
+      const exchangeRes = await fetch(`${API_BASE}/auth/firebase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: firebaseToken })
+      });
+      
+      if (exchangeRes.ok) {
+        const data = await exchangeRes.json();
+        // Handle both with and without ApiResponse envelope
+        token = data?.data?.token || data?.token;
+        if (token) {
+          localStorage.setItem("vb_customer_token", token);
+        }
+      } else {
+        console.warn("Backend rejected Firebase token. Status:", exchangeRes.status);
+      }
     } catch (e) {
-      console.error("Failed to get Firebase token", e);
+      console.error("Failed to get or exchange Firebase token", e);
     }
   }
 

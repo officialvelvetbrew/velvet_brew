@@ -34,6 +34,7 @@ export async function signInWithGoogle(): Promise<User> {
 export async function logoutCustomer(): Promise<void> {
   try {
     await signOut(auth);
+    localStorage.removeItem("vb_customer_token");
   } catch (error) {
     console.error("Error signing out", error);
     throw error;
