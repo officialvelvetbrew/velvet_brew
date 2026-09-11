@@ -138,14 +138,17 @@ export default function Header({
               )}
             </div>
           ) : (
-            <button
-              onClick={signInWithGoogle}
-              className="flex h-10 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-semibold transition-colors"
-              style={{ borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(253, 251, 247, 0.9)' }}
-            >
-              <User2 className="h-4 w-4" />
-              Sign in
-            </button>
+            <div className="flex flex-col items-center">
+              <button
+                onClick={signInWithGoogle}
+                className="flex h-10 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-semibold transition-colors"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(253, 251, 247, 0.9)' }}
+              >
+                <User2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign in / Track Orders</span>
+                <span className="sm:hidden">Sign in</span>
+              </button>
+            </div>
           )}
 
           <button
