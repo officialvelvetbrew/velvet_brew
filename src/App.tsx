@@ -12,6 +12,7 @@ import MenuSection from "./components/MenuSection";
 import CartDrawer from "./components/CartDrawer";
 import CheckoutModal from "./components/CheckoutModal";
 import LegalModal from "./components/LegalModal";
+import CustomerOrdersModal from "./components/CustomerOrdersModal";
 
 import { COLORS } from "./data/colors";
 import { MENU, CATEGORIES, PROMO_HOT_PRICE } from "./data/menu";
@@ -52,6 +53,8 @@ export default function App() {
 
   const [legalOpen, setLegalOpen] =
     useState<"privacy" | "terms" | null>(null);
+
+  const [ordersOpen, setOrdersOpen] = useState(false);
 
   const [payment, setPayment] =
     useState<PaymentMethod>("upi");
@@ -604,6 +607,7 @@ export default function App() {
         cartCount={cartCount}
         onOpenCart={() => setCartOpen(true)}
         cartOpen={cartOpen}
+        onOpenOrders={() => setOrdersOpen(true)}
       />
 
       <Hero />
@@ -770,6 +774,11 @@ export default function App() {
         open={legalOpen !== null}
         initialTab={legalOpen === "terms" ? "terms" : "privacy"}
         onClose={() => setLegalOpen(null)}
+      />
+
+      <CustomerOrdersModal 
+        open={ordersOpen}
+        onClose={() => setOrdersOpen(false)}
       />
     </main>
   );

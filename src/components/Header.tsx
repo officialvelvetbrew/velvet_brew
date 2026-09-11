@@ -15,10 +15,12 @@ export default function Header({
   cartCount,
   onOpenCart,
   cartOpen,
+  onOpenOrders,
 }: {
   cartCount: number;
   onOpenCart: () => void;
   cartOpen?: boolean;
+  onOpenOrders?: () => void;
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -106,6 +108,20 @@ export default function Header({
                     <p className="text-[13px] font-semibold truncate" style={{ color: COLORS.cream }}>{user.displayName}</p>
                     <p className="text-[11px] truncate" style={{ color: COLORS.muted }}>{user.email}</p>
                   </div>
+                  {onOpenOrders && (
+                    <button
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        onOpenOrders();
+                      }}
+                      className="w-full text-left rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
+                      style={{ color: COLORS.cream }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      My Orders
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setDropdownOpen(false);
