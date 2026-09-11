@@ -4,15 +4,48 @@ import { auth } from "../firebase/firebase";
 
 const provider = new GoogleAuthProvider();
 
+
 export function useCustomerAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // Both admins and customers share the same Firebase Auth.
-      // This hook simply exposes the current Firebase user for the customer-facing frontend.
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      if (currentUser) {
+        let token = localStorage.getItem("vb_customer_token");
+        if (!token) {
+          try {
+            const firebaseToken = await currentUser.getIdToken();
+            // Use the environment variable for API base
+            const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "https://api.velvetbrew.in/api/v1";
+            const exchangeRes = await fetch(`${baseUrl}/auth/firebase`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                token: firebaseToken,
+                idToken: firebaseToken,
+                firebaseToken: firebaseToken,
+                credential: firebaseToken
+              })
+            });
+            
+            if (exchangeRes.ok) {
+              const data = await exchangeRes.json();
+              token = data?.data?.token || data?.token;
+              if (token) {
+                localStorage.setItem("vb_customer_token", token);
+              }
+            }
+          } catch (e) {
+            console.error("Failed to exchange Firebase token on load", e);
+          }
+        }
+      } else {
+        localStorage.removeItem("vb_customer_token");
+      }
+      
       setLoading(false);
     });
     return () => unsubscribe();
