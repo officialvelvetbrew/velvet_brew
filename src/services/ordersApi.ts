@@ -1,6 +1,7 @@
 import type { Order, OrderStatus, CategoryId, PaymentMethod } from "../types";
 import { SAMPLE_ORDERS } from "../data/sampleOrders";
 import { getAuthToken, logout } from "../services/adminAuth";
+import { auth } from "../firebase/firebase";
 
 /**
  * ---------------------------------------------------------------
@@ -168,7 +169,15 @@ export async function fetchOrders(): Promise<Order[]> {
     );
   }
 
-  const token = getAuthToken();
+  let token = getAuthToken();
+  if (!token && auth.currentUser) {
+    try {
+      token = await auth.currentUser.getIdToken();
+    } catch (e) {
+      console.error("Failed to get Firebase token for all orders", e);
+    }
+  }
+
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -230,12 +239,25 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  const token = getAuthToken();
+  let token = getAuthToken();
+  if (!token && auth.currentUser) {
+    try {
+      token = await auth.currentUser.getIdToken();
+    } catch (e) {
+      console.error("Failed to get Firebase token", e);
+    }
+  }
+
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   try {
     const res = await fetch(`${API_BASE}/customer/orders?mobile=${encodeURIComponent(mobile)}`, { headers });
+    if (res.status === 401 || res.status === 403) {
+      // If we used an admin token and it failed, maybe logout admin. 
+      // If we used a customer token, we don't logout admin.
+      throw new Error("Not authorized or session expired.");
+    }
     if (res.ok) {
       const result = await res.json();
       let rawOrders: any[] = [];
