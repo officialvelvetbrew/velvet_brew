@@ -252,7 +252,7 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   try {
-    const res = await fetch(`${API_BASE}/customer/orders?mobile=${encodeURIComponent(mobile)}`, { headers });
+    const res = await fetch(`${API_BASE}/customer/orders/mine`, { headers });
     if (res.status === 401 || res.status === 403) {
       // If we used an admin token and it failed, maybe logout admin. 
       // If we used a customer token, we don't logout admin.
