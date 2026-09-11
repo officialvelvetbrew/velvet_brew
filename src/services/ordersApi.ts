@@ -177,7 +177,12 @@ export async function fetchOrders(): Promise<Order[]> {
       const exchangeRes = await fetch(`${API_BASE}/auth/firebase`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: firebaseToken })
+        body: JSON.stringify({ 
+          token: firebaseToken,
+          idToken: firebaseToken,
+          firebaseToken: firebaseToken,
+          credential: firebaseToken
+        })
       });
       
       if (exchangeRes.ok) {
@@ -262,7 +267,12 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
       const exchangeRes = await fetch(`${API_BASE}/auth/firebase`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: firebaseToken })
+        body: JSON.stringify({ 
+          token: firebaseToken,
+          idToken: firebaseToken,
+          firebaseToken: firebaseToken,
+          credential: firebaseToken
+        })
       });
       
       if (exchangeRes.ok) {
