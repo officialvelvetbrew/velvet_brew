@@ -324,7 +324,9 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
           if (!cleanMobile || !oMobile) return false;
           return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
         });
-        return filtered;
+        if (filtered.length > 0) {
+          return filtered;
+        }
       }
     }
   } catch (err) {
