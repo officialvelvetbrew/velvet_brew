@@ -29,7 +29,7 @@ export default function CustomerManageModal({ customer, onClose }: CustomerManag
     setLoading(true);
     setError(null);
 
-    fetchCustomerOrders(customer.mobile || "", customer.id)
+    fetchCustomerOrders(customer.mobile || "", customer.id, true)
       .then((res) => {
         if (mounted) {
           setOrders(res || []);

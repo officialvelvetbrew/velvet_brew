@@ -252,7 +252,7 @@ export async function fetchCustomers(): Promise<any> {
 }
 
 /** Fetch order history for a specific customer. */
-export async function fetchCustomerOrders(mobile: string, customerId?: string): Promise<Order[]> {
+export async function fetchCustomerOrders(mobile: string, customerId?: string, isAdmin: boolean = false): Promise<Order[]> {
   const cleanMobile = (mobile || "").replace(/\D/g, "");
 
   if (USE_MOCK) {
@@ -301,36 +301,36 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string): 
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  try {
-    const res = await fetch(`${API_BASE}/customer/orders/mine`, { headers });
-    if (res.status === 401 || res.status === 403) {
-      // If we used an admin token and it failed, maybe logout admin. 
-      // If we used a customer token, we don't logout admin.
-      throw new Error("Not authorized or session expired.");
-    }
-    if (res.ok) {
-      const result = await res.json();
-      let rawOrders: any[] = [];
-      if (Array.isArray(result)) rawOrders = result;
-      else if (result && Array.isArray(result.data)) rawOrders = result.data;
-      else if (result && Array.isArray(result.orders)) rawOrders = result.orders;
+  if (!isAdmin) {
+    try {
+      const res = await fetch(`${API_BASE}/customer/orders/mine`, { headers });
+      if (res.status === 401 || res.status === 403) {
+        throw new Error("Not authorized or session expired.");
+      }
+      if (res.ok) {
+        const result = await res.json();
+        let rawOrders: any[] = [];
+        if (Array.isArray(result)) rawOrders = result;
+        else if (result && Array.isArray(result.data)) rawOrders = result.data;
+        else if (result && Array.isArray(result.orders)) rawOrders = result.orders;
 
-      if (rawOrders.length > 0) {
-        const mapped = rawOrders
-          .filter((o) => o.paymentStatus?.toUpperCase() !== "FAILED")
-          .map(mapBackendOrderToFrontend);
-        const filtered = mapped.filter((o) => {
-          const oMobile = (o.phone || "").replace(/\D/g, "");
-          if (!cleanMobile || !oMobile) return false;
-          return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
-        });
-        if (filtered.length > 0) {
-          return filtered;
+        if (rawOrders.length > 0) {
+          const mapped = rawOrders
+            .filter((o) => o.paymentStatus?.toUpperCase() !== "FAILED")
+            .map(mapBackendOrderToFrontend);
+          const filtered = mapped.filter((o) => {
+            const oMobile = (o.phone || "").replace(/\D/g, "");
+            if (!cleanMobile || !oMobile) return false;
+            return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
+          });
+          if (filtered.length > 0) {
+            return filtered;
+          }
         }
       }
+    } catch (err) {
+      console.warn("Direct customer orders endpoint fetch failed, falling back to all orders filter:", err);
     }
-  } catch (err) {
-    console.warn("Direct customer orders endpoint fetch failed, falling back to all orders filter:", err);
   }
 
   // Fallback to fetchOrders() filtered by customer phone
@@ -718,3 +718,5 @@ export async function verifyPayment(data: {
 
   return result;
 }
+
+
