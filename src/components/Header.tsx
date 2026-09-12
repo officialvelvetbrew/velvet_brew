@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, User2, MapPin } from 'lucide-react';
+import { ShoppingBag, User2, MapPin, X } from 'lucide-react';
 import { COLORS } from '../data/colors';
 import logo from '../assets/velvet-brew-logo.jpg';
 import { useNavigate, Link } from 'react-router-dom';
@@ -25,6 +25,8 @@ export default function Header({
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showPhonePrompt, setShowPhonePrompt] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
   const navigate = useNavigate();
   const { user, loading } = useCustomerAuth();
 
@@ -141,7 +143,7 @@ export default function Header({
           ) : (
             <div className="flex flex-col items-center">
               <button
-                onClick={signInWithGoogle}
+                onClick={() => setShowPhonePrompt(true)}
                 className="flex h-10 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-semibold transition-colors"
                 style={{ borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(253, 251, 247, 0.9)' }}
               >
@@ -181,6 +183,66 @@ export default function Header({
             <span className="shrink-0 items-center gap-1.5 flex">
               <MapPin className="h-3 w-3" /> Opp. City Hospital, Avas Vikas Road, Shastri Nagar, Civil Lines, Budaun
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Phone Prompt Modal */}
+      {showPhonePrompt && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowPhonePrompt(false)}>
+          <div 
+            className="w-full max-w-sm rounded-2xl p-6 shadow-xl"
+            style={{ backgroundColor: COLORS.espresso, border: '1px solid rgba(255,255,255,0.12)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold" style={{ color: COLORS.cream }}>Enter Phone Number</h2>
+              <button onClick={() => setShowPhonePrompt(false)} className="opacity-70 hover:opacity-100 transition-opacity">
+                <X className="h-5 w-5" style={{ color: COLORS.cream }} />
+              </button>
+            </div>
+            
+            <p className="text-sm mb-4" style={{ color: COLORS.muted }}>
+              We need your phone number to link your previous and future orders to your account.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: COLORS.gold }}>
+                  Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none transition-colors"
+                  style={{ 
+                    backgroundColor: 'rgba(255,255,255,0.05)', 
+                    borderColor: 'rgba(255,255,255,0.12)',
+                    color: COLORS.cream
+                  }}
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  maxLength={10}
+                />
+              </div>
+
+              <button
+                disabled={phoneNumber.length !== 10}
+                onClick={async () => {
+                  localStorage.setItem('vb_pending_phone', phoneNumber);
+                  setShowPhonePrompt(false);
+                  try {
+                    await signInWithGoogle();
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: COLORS.gold, color: COLORS.espresso }}
+              >
+                Continue with Google
+              </button>
+            </div>
           </div>
         </div>
       )}

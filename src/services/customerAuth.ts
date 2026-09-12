@@ -20,6 +20,7 @@ export function useCustomerAuth() {
             const firebaseToken = await currentUser.getIdToken();
             // Use the environment variable for API base
             const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "https://api.velvetbrew.in/api/v1";
+            const pendingPhone = localStorage.getItem("vb_pending_phone");
             const exchangeRes = await fetch(`${baseUrl}/auth/firebase`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -27,9 +28,15 @@ export function useCustomerAuth() {
                 token: firebaseToken,
                 idToken: firebaseToken,
                 firebaseToken: firebaseToken,
-                credential: firebaseToken
+                credential: firebaseToken,
+                mobile: pendingPhone || "",
+                phone: pendingPhone || "",
+                phoneNumber: pendingPhone || ""
               })
             });
+            
+            // Clean up pending phone regardless of outcome
+            localStorage.removeItem("vb_pending_phone");
             
             if (exchangeRes.ok) {
               const data = await exchangeRes.json();
