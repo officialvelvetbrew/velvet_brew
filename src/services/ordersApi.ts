@@ -132,7 +132,7 @@ function mapBackendOrderToFrontend(o: any): Order {
     o.payment_method ||
     o.payment_mode ||
     o.payment ||
-    (o.razorpayPaymentId || o.razorpayOrderId || o.razorpay_payment_id || o.razorpay_order_id ? "upi" : "")
+    ""
   ).toString().toLowerCase();
 
   if (rawPm.includes("upi") || rawPm.includes("online") || rawPm.includes("razorpay")) {
@@ -626,6 +626,8 @@ export async function createPayment(order: Order): Promise<any> {
       quantity: i.qty,
     })),
     offerCode: order.offerCode,
+    paymentMethod: (order.paymentMethod || "upi").toUpperCase(),
+    paymentMode: (order.paymentMethod || "upi").toUpperCase(),
   };
 
   const res = await fetch(`${API_BASE}/payments`, {

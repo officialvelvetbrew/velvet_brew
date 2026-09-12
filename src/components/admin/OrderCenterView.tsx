@@ -39,8 +39,17 @@ export default function OrderCenterView({
   const [filter, setFilter] = useState<"All" | OrderStatus>("All");
 
 
-  const live = orders.filter((o) => !["Completed", "Rejected"].includes(o.status));
-  const visible = filter === "All" ? orders : orders.filter((o) => o.status === filter);
+  const validOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (o.paymentMethod === "cod") return true;
+      if (o.paid) return true;
+      if (["Accepted", "Preparing", "Ready", "Completed", "Rejected"].includes(o.status)) return true;
+      return false; // Hide unpaid pending online orders
+    });
+  }, [orders]);
+
+  const live = validOrders.filter((o) => !["Completed", "Rejected"].includes(o.status));
+  const visible = filter === "All" ? validOrders : validOrders.filter((o) => o.status === filter);
 
   const getAgeMins = (dateStr: any) => {
     let d: Date;
@@ -68,15 +77,15 @@ export default function OrderCenterView({
   };
 
   const getOldestText = (status: OrderStatus) => {
-    const rows = orders.filter((o) => o.status === status);
+    const rows = validOrders.filter((o) => o.status === status);
     if (rows.length === 0) return null;
     const oldest = Math.max(...rows.map((r) => getAgeMins(r.createdAt)));
     return formatAge(oldest);
   };
 
   const count = (f: "All" | OrderStatus) => {
-    if (f === "All") return orders.length;
-    return orders.filter((o) => o.status === f).length;
+    if (f === "All") return validOrders.length;
+    return validOrders.filter((o) => o.status === f).length;
   };
 
   const advance = (order: Order) => {
@@ -93,7 +102,7 @@ export default function OrderCenterView({
         {/* Stats Strip */}
         <div className="grid grid-cols-2 gap-3 md:gap-4 sm:grid-cols-4">
           {(["Pending", "Accepted", "Preparing", "Ready"] as OrderStatus[]).map((s) => {
-            const rows = orders.filter((o) => o.status === s);
+            const rows = validOrders.filter((o) => o.status === s);
             const oldestText = getOldestText(s);
             const isActive = filter === s;
             
