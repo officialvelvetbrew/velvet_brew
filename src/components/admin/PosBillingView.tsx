@@ -13,7 +13,7 @@ interface PosBillingViewProps {
 export default function PosBillingView({ items }: PosBillingViewProps) {
   const [query, setQuery] = useState("");
   const [channel, setChannel] = useState<"Dine-in" | "Takeaway">("Dine-in");
-  const [cat, setCat] = useState<string>("all");
+  const [cat, setCat] = useState<string>("1");
 
   const [cart, setCart] = useState<Record<string, { item: any; qty: number }>>({});
   const [customerName, setCustomerName] = useState("");
@@ -276,7 +276,7 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
           </div>
         </div>
 
-        <div className="scrollbar-none flex gap-2 overflow-x-auto pb-2 mb-6 pt-1">
+        <div className="flex flex-wrap gap-2 pb-2 mb-6 pt-1">
           <button
             onClick={() => setCat("all")}
             className={`flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2 text-[13px] font-bold transition-all ${
