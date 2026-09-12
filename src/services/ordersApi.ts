@@ -468,32 +468,21 @@ export async function updateOrderItems(order: Order, newItems: any[]): Promise<O
     return { menuId, quantity: item.qty };
   });
 
-  // ── Attempt 1: items-only payload (no customer field) ──────────────────────
-  const minimalPayload = { items: mappedItems };
-  console.log("[updateOrderItems] Attempt 1 – items only:", JSON.stringify(minimalPayload));
+  const fullName = (order.customerName || "").trim() || "Walk-in Guest";
+  const rawMobile = (order.phone || "").replace(/\D/g, "");
+  const mobile = rawMobile.length >= 10 ? rawMobile : "9876543210";
+
+  const payload = {
+    customer: { fullName, mobile, email: order.email || "" },
+    items: mappedItems,
+    specialInstructions: order.note || ""
+  };
+  console.log("[updateOrderItems] Payload:", JSON.stringify(payload));
 
   let res = await fetch(
     `${API_BASE}/customer/orders?orderNumber=${encodeURIComponent(order.id)}`,
-    { method: "PATCH", headers, body: JSON.stringify(minimalPayload) }
+    { method: "PATCH", headers, body: JSON.stringify(payload) }
   );
-
-  // ── Attempt 2: with customer (full payload) if attempt 1 was 4xx/5xx ──────
-  if (!res.ok && res.status !== 401 && res.status !== 403) {
-    const fullName = (order.customerName || "").trim() || "Walk-in Guest";
-    const rawMobile = (order.phone || "").replace(/\D/g, "");
-    const mobile = rawMobile.length >= 10 ? rawMobile : "9876543210";
-
-    const fullPayload = {
-      customer: { fullName, mobile, email: order.email || "" },
-      items: mappedItems,
-    };
-    console.log("[updateOrderItems] Attempt 2 – full payload:", JSON.stringify(fullPayload));
-
-    res = await fetch(
-      `${API_BASE}/customer/orders?orderNumber=${encodeURIComponent(order.id)}`,
-      { method: "PATCH", headers, body: JSON.stringify(fullPayload) }
-    );
-  }
 
   if (res.status === 401 || res.status === 403) {
     logout();
