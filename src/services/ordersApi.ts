@@ -192,10 +192,12 @@ export async function fetchOrders(): Promise<Order[]> {
       
       if (exchangeRes.ok) {
         const data = await exchangeRes.json();
-        // Handle both with and without ApiResponse envelope
-        customerToken = data?.data?.token || data?.token;
+        const extractedToken = data?.data?.token || data?.token || data?.accessToken || data?.data?.accessToken || data?.jwt || data?.data?.jwt || data?.access_token;
+        customerToken = extractedToken;
         if (customerToken) {
           localStorage.setItem("vb_customer_token", customerToken);
+        } else {
+          console.error("Backend auth succeeded but no token found in response:", data);
         }
       }
     } catch (e) {
@@ -286,10 +288,12 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string, i
       
       if (exchangeRes.ok) {
         const data = await exchangeRes.json();
-        // Handle both with and without ApiResponse envelope
-        customerToken = data?.data?.token || data?.token;
+        const extractedToken = data?.data?.token || data?.token || data?.accessToken || data?.data?.accessToken || data?.jwt || data?.data?.jwt || data?.access_token;
+        customerToken = extractedToken;
         if (customerToken) {
           localStorage.setItem("vb_customer_token", customerToken);
+        } else {
+          console.error("Backend auth succeeded but no token found in response:", data);
         }
       } else {
         console.warn("Backend rejected Firebase token. Status:", exchangeRes.status);

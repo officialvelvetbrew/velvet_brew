@@ -36,9 +36,11 @@ export function useCustomerAuth() {
             
             if (exchangeRes.ok) {
               const data = await exchangeRes.json();
-              token = data?.data?.token || data?.token;
+              const token = data?.data?.token || data?.token || data?.accessToken || data?.data?.accessToken || data?.jwt || data?.data?.jwt || data?.access_token;
               if (token) {
                 localStorage.setItem("vb_customer_token", token);
+              } else {
+                console.error("Backend auth succeeded but no token found in response:", data);
               }
             }
           } catch (e) {
