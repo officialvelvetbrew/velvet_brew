@@ -22,29 +22,12 @@ export function useCustomerAuth() {
             const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "https://api.velvetbrew.in/api/v1";
             const pendingPhone = localStorage.getItem("vb_pending_phone");
             
-            // Build query params just in case backend expects it in URL
-            const queryParams = new URLSearchParams();
-            if (pendingPhone) {
-              queryParams.append('mobile', pendingPhone);
-              queryParams.append('phone', pendingPhone);
-              queryParams.append('phone_number', pendingPhone);
-            }
-            const urlWithParams = pendingPhone ? `${baseUrl}/auth/firebase?${queryParams.toString()}` : `${baseUrl}/auth/firebase`;
-
-            const exchangeRes = await fetch(urlWithParams, {
+            const exchangeRes = await fetch(`${baseUrl}/auth/firebase`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ 
-                token: firebaseToken,
                 idToken: firebaseToken,
-                firebaseToken: firebaseToken,
-                credential: firebaseToken,
-                mobile: pendingPhone || "",
-                phone: pendingPhone || "",
-                phoneNumber: pendingPhone || "",
-                phone_number: pendingPhone || "",
-                mobile_number: pendingPhone || "",
-                mobileNumber: pendingPhone || ""
+                phoneNumber: pendingPhone || ""
               })
             });
             

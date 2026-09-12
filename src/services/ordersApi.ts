@@ -184,10 +184,7 @@ export async function fetchOrders(): Promise<Order[]> {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          token: firebaseToken,
-          idToken: firebaseToken,
-          firebaseToken: firebaseToken,
-          credential: firebaseToken
+          idToken: firebaseToken
         })
       });
       
@@ -275,10 +272,7 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string, i
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          token: firebaseToken,
-          idToken: firebaseToken,
-          firebaseToken: firebaseToken,
-          credential: firebaseToken
+          idToken: firebaseToken
         })
       });
       
