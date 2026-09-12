@@ -209,7 +209,11 @@ export async function fetchOrders(): Promise<Order[]> {
 
   const res = await fetch(`${API_BASE}/customer/orders`, { headers });
   if (res.status === 401 || res.status === 403) {
-    logout();
+    if (localStorage.getItem("vb_customer_token")) {
+      localStorage.removeItem("vb_customer_token");
+    } else {
+      logout();
+    }
     throw new Error("Session expired. Please log in again.");
   }
   if (!res.ok) throw new Error("Failed to fetch orders");
@@ -303,6 +307,9 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string, i
     try {
       const res = await fetch(`${API_BASE}/customer/orders/mine`, { headers });
       if (res.status === 401 || res.status === 403) {
+        if (localStorage.getItem("vb_customer_token")) {
+          localStorage.removeItem("vb_customer_token");
+        }
         throw new Error("Not authorized or session expired.");
       }
       if (res.ok) {
