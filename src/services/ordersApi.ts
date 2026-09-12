@@ -179,12 +179,14 @@ export async function fetchOrders(): Promise<Order[]> {
   if (!customerToken && auth.currentUser) {
     try {
       const firebaseToken = await auth.currentUser.getIdToken();
+      const pendingPhone = localStorage.getItem("vb_customer_phone") || localStorage.getItem("vb_pending_phone");
       // Exchange Firebase token for Backend JWT
       const exchangeRes = await fetch(`${API_BASE}/auth/firebase`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          idToken: firebaseToken
+          idToken: firebaseToken,
+          phoneNumber: pendingPhone || ""
         })
       });
       
@@ -267,12 +269,14 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string, i
   if (!customerToken && auth.currentUser) {
     try {
       const firebaseToken = await auth.currentUser.getIdToken();
+      const pendingPhone = localStorage.getItem("vb_customer_phone") || localStorage.getItem("vb_pending_phone") || mobile || "";
       // Exchange Firebase token for Backend JWT
       const exchangeRes = await fetch(`${API_BASE}/auth/firebase`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          idToken: firebaseToken
+          idToken: firebaseToken,
+          phoneNumber: pendingPhone
         })
       });
       

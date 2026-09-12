@@ -20,7 +20,7 @@ export function useCustomerAuth() {
             const firebaseToken = await currentUser.getIdToken();
             // Use the environment variable for API base
             const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "https://api.velvetbrew.in/api/v1";
-            const pendingPhone = localStorage.getItem("vb_pending_phone");
+            const pendingPhone = localStorage.getItem("vb_pending_phone") || localStorage.getItem("vb_customer_phone");
             
             const exchangeRes = await fetch(`${baseUrl}/auth/firebase`, {
               method: "POST",

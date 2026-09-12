@@ -26,7 +26,7 @@ export default function Header({
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showPhonePrompt, setShowPhonePrompt] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(() => localStorage.getItem('vb_customer_phone') || localStorage.getItem('vb_pending_phone') || '');
   const navigate = useNavigate();
   const { user, loading } = useCustomerAuth();
 
@@ -230,6 +230,7 @@ export default function Header({
                 disabled={phoneNumber.length !== 10}
                 onClick={async () => {
                   localStorage.setItem('vb_pending_phone', phoneNumber);
+                  localStorage.setItem('vb_customer_phone', phoneNumber);
                   setShowPhonePrompt(false);
                   try {
                     await signInWithGoogle();
