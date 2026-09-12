@@ -56,15 +56,21 @@ export default function ReportsView({ orders }: ReportsViewProps) {
     });
   }, [orders, activeTab]);
 
+  // ── Filter completed orders for revenue calculations ──────────────────────
+  const completedOrders = useMemo(() => {
+    return filteredOrders.filter(o => (o.status || "").toLowerCase() === "completed");
+  }, [filteredOrders]);
+
   // ── KPIs ─────────────────────────────────────────────────────────────────
-  const netSales = filteredOrders.reduce((s, o) => s + (o.total || 0), 0);
+  const netSales = completedOrders.reduce((s, o) => s + (o.total || 0), 0);
   const numOrders = filteredOrders.length;
-  const avgOrderValue = numOrders > 0 ? Math.round(netSales / numOrders) : 0;
+  const numCompleted = completedOrders.length;
+  const avgOrderValue = numCompleted > 0 ? Math.round(netSales / numCompleted) : 0;
 
   // ── Payment mix (cod = cash, upi/card = online) ───────────────────────────
   let cashTotal = 0;
   let onlineTotal = 0;
-  filteredOrders.forEach((o) => {
+  completedOrders.forEach((o) => {
     const pm = (o.paymentMethod || "").toLowerCase();
     if (pm === "cod" || pm === "cash") {
       cashTotal += o.total || 0;
@@ -79,7 +85,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
   // ── Mode mix (Dine-in vs Takeaway) ───────────────────────────────────────
   let dineInTotal = 0;
   let takeawayTotal = 0;
-  filteredOrders.forEach((o) => {
+  completedOrders.forEach((o) => {
     if ((o.mode || "").toLowerCase().includes("dine")) dineInTotal += o.total || 0;
     else takeawayTotal += o.total || 0;
   });
@@ -89,7 +95,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
 
   // ── Category revenue ──────────────────────────────────────────────────────
   const categoryRevenue: Record<string, number> = { hot: 0, cold: 0, shakes: 0, bites: 0 };
-  filteredOrders.forEach((o) => {
+  completedOrders.forEach((o) => {
     o.items.forEach((item) => {
       const cat = (item.category || "hot") as keyof typeof categoryRevenue;
       if (cat in categoryRevenue) categoryRevenue[cat] += item.price * item.qty;
@@ -99,7 +105,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
 
   // ── Top items ─────────────────────────────────────────────────────────────
   const itemCounts = new Map<string, { qty: number; revenue: number }>();
-  filteredOrders.forEach((o) => {
+  completedOrders.forEach((o) => {
     o.items.forEach((item) => {
       const existing = itemCounts.get(item.name) || { qty: 0, revenue: 0 };
       itemCounts.set(item.name, {
@@ -118,7 +124,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
   const hourlyRev: Record<number, number> = {};
   HOURS.forEach((h) => (hourlyRev[h] = 0));
   if (activeTab === "daily") {
-    filteredOrders.forEach((o) => {
+    completedOrders.forEach((o) => {
       const d = parseOrderDate(o.createdAt);
       const h = d.getHours();
       if (h >= 6 && h <= 22) hourlyRev[h] = (hourlyRev[h] || 0) + (o.total || 0);
@@ -215,7 +221,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
             <div className="text-[11px] font-bold tracking-widest uppercase opacity-80 mb-2">Net Sales</div>
             <div>
               <div className="text-3xl font-bold mb-1">{rupee(netSales)}</div>
-              <div className="text-xs font-semibold opacity-70">{numOrders} orders total</div>
+              <div className="text-xs font-semibold opacity-70">{numCompleted} orders total</div>
             </div>
             <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/10 flex items-center justify-center">₹</div>
           </div>
@@ -225,7 +231,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
             <div>
               <div className="text-3xl font-bold text-[#2C1810] mb-1">{numOrders}</div>
               <div className="text-xs font-semibold text-[#8B7355]">
-                {filteredOrders.filter(o => o.status === "Completed").length} completed
+                {numCompleted} completed
               </div>
             </div>
             <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-[#8B7355] flex items-center justify-center">
@@ -328,7 +334,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
               /* Weekly/Monthly/Yearly: proper bar chart with y-axis */
               (() => {
                 const dayMap = new Map<string, number>();
-                filteredOrders.forEach(o => {
+                completedOrders.forEach(o => {
                   const d = parseOrderDate(o.createdAt);
                   const key = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
                   dayMap.set(key, (dayMap.get(key) || 0) + (o.total || 0));
