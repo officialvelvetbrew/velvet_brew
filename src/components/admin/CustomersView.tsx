@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Users, IndianRupee, Search } from "lucide-react";
-import { fetchCustomers } from "../../services/ordersApi";
+import { fetchCustomers, fetchOrders } from "../../services/ordersApi";
 import { rupee } from "../../utils/currency";
 import CustomerManageModal from "./CustomerManageModal";
 
@@ -15,8 +15,53 @@ export default function CustomersView() {
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
 
   useEffect(() => {
-    fetchCustomers().then(res => {
-      setData(res || { totalCustomers: 0, lifetimeRevenue: 0, customers: [] });
+    Promise.all([fetchCustomers(), fetchOrders()]).then(([custRes, allOrders]) => {
+      let rawCustomers = custRes?.customers || [];
+      const completedOrders = (allOrders || []).filter(o => o.status === "Completed");
+
+      const statsByPhone: Record<string, { spend: number, visits: number, lastVisit: string }> = {};
+      completedOrders.forEach(o => {
+        const phone = (o.phone || "").replace(/\D/g, "");
+        if (!phone) return;
+        if (!statsByPhone[phone]) {
+           statsByPhone[phone] = { spend: 0, visits: 0, lastVisit: o.createdAt };
+        }
+        statsByPhone[phone].spend += (o.total || 0);
+        statsByPhone[phone].visits += 1;
+        
+        const oDate = new Date(o.createdAt.endsWith("Z") ? o.createdAt : o.createdAt + "Z").getTime();
+        const curDate = new Date(statsByPhone[phone].lastVisit.endsWith("Z") ? statsByPhone[phone].lastVisit : statsByPhone[phone].lastVisit + "Z").getTime();
+        if (oDate > curDate) {
+           statsByPhone[phone].lastVisit = o.createdAt;
+        }
+      });
+
+      let updatedCustomers = rawCustomers.map((c: any) => {
+        const phone = (c.mobile || "").replace(/\D/g, "");
+        if (statsByPhone[phone]) {
+           return {
+             ...c,
+             lifetimeSpend: statsByPhone[phone].spend,
+             totalVisits: statsByPhone[phone].visits,
+             lastVisit: statsByPhone[phone].lastVisit
+           };
+        }
+        return {
+           ...c,
+           lifetimeSpend: 0,
+           totalVisits: 0
+        };
+      });
+
+      updatedCustomers = updatedCustomers.filter((c: any) => c.lifetimeSpend > 0 || c.totalVisits > 0);
+
+      const trueTotalRevenue = updatedCustomers.reduce((sum: number, c: any) => sum + (c.lifetimeSpend || 0), 0);
+
+      setData({
+        totalCustomers: updatedCustomers.length,
+        lifetimeRevenue: trueTotalRevenue,
+        customers: updatedCustomers
+      });
       setLoading(false);
     }).catch(err => {
       console.error("Failed to load customers view:", err);
