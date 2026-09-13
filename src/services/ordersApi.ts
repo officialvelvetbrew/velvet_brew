@@ -554,12 +554,11 @@ export async function updateOrderPaid(order: Order): Promise<Order | null> {
   const paymentStatus = order.paid ? "SUCCESS" : "PENDING";
 
   const res = await fetch(
-    `${API_BASE}/admin/orders/${order.id}/status`,
+    `${API_BASE}/admin/orders/${order.id}/payment-status`,
     {
       method: "PATCH",
       headers,
       body: JSON.stringify({
-        orderStatus: order.status.toUpperCase(),
         paymentStatus,
       }),
     }
@@ -589,11 +588,10 @@ export async function updateOrderPaymentFailed(order: Order, orderId: string): P
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    await fetch(`${API_BASE}/admin/orders/${orderId}/status`, {
+    await fetch(`${API_BASE}/admin/orders/${orderId}/payment-status`, {
       method: "PATCH",
       headers,
       body: JSON.stringify({
-        orderStatus: order.status.toUpperCase(),
         paymentStatus: "FAILED",
       }),
     });
