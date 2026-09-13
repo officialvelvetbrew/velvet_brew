@@ -391,9 +391,15 @@ export async function createOrder(order: Order): Promise<Order> {
     }))
   );
 
+  const token = localStorage.getItem("vb_customer_token");
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}/customer/orders`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       customer: {
         fullName: order.customerName,
