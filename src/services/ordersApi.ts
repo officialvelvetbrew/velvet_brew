@@ -316,6 +316,12 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string, i
   }
 
   const token = customerToken || getAuthToken();
+  
+  if (token) {
+    console.log("👉 [DEBUG] BACKEND JWT TOKEN: (Copy this and send to backend team)");
+    console.log(token);
+  }
+
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
