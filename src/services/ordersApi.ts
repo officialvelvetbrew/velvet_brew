@@ -273,6 +273,17 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string, i
   }
 
   let customerToken = localStorage.getItem("vb_customer_token");
+  
+  // Wait for Firebase auth to initialize if it hasn't already
+  if (!customerToken) {
+    await new Promise<void>((resolve) => {
+      const unsubscribe = auth.onAuthStateChanged(() => {
+        unsubscribe();
+        resolve();
+      });
+    });
+  }
+
   if (!customerToken && auth.currentUser) {
     try {
       const firebaseToken = await auth.currentUser.getIdToken();
