@@ -4,7 +4,7 @@ import { COLORS } from "../../data/colors";
 import { rupee } from "../../utils/currency";
 import { CATEGORIES, MENU, PROMO_HOT_PRICE } from "../../data/menu";
 import { getMenu, getCategories } from "../../api/menu";
-import { createOrder, createPayment, verifyPayment, updateOrderPaid, updateOrderPaymentFailed } from "../../services/ordersApi";
+import { createOrder, createPayment, verifyPayment, updateOrderPaid, updateOrderPaymentFailed, updateOrderItems } from "../../services/ordersApi";
 import type { Category, MenuItem, CategoryId, Details, PaymentMethod, Order, OrderItemRecord } from "../../types";
 import { loadRazorpayScript } from "../../utils/razorpay";
 
@@ -12,9 +12,10 @@ interface PlaceOrderModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialOrder?: Order | null;
 }
 
-export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrderModalProps) {
+export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder }: PlaceOrderModalProps) {
   // Menu loading states
   const [categories, setCategories] = useState<Category[]>(CATEGORIES);
   const [menu, setMenu] = useState<Record<CategoryId, MenuItem[]>>(MENU);
@@ -117,6 +118,57 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
     };
   }, [open]);
 
+  // Initialize form if editing an existing order
+  useEffect(() => {
+    if (open && initialOrder && Object.keys(menu.hot).length > 0) {
+      setDetails({
+        name: initialOrder.customerName || "",
+        phone: initialOrder.phone || "",
+        email: initialOrder.email || "",
+        mode: initialOrder.mode || "Takeaway",
+        note: initialOrder.note || "",
+      });
+      setPayment(initialOrder.paymentMethod || "cod");
+      
+      const newCart: Record<string, any> = {};
+      initialOrder.items.forEach(line => {
+        // Find the item in the menu to get its full details
+        let foundItem: MenuItem | null = null;
+        let foundCat: CategoryId | null = null;
+        
+        for (const [catId, items] of Object.entries(menu)) {
+          const match = items.find(i => String(i.id) === String(line.id));
+          if (match) {
+            foundItem = match;
+            foundCat = catId as CategoryId;
+            break;
+          }
+        }
+        
+        if (foundItem && foundCat) {
+          newCart[foundItem.id] = {
+            item: foundItem,
+            category: foundCat,
+            qty: line.qty
+          };
+        } else {
+          // Fallback if item is no longer in menu
+          newCart[line.id] = {
+            item: { id: line.id, name: line.name, price: line.price },
+            category: "hot",
+            qty: line.qty
+          };
+        }
+      });
+      setCart(newCart);
+    } else if (open && !initialOrder) {
+      // Reset if opening in create mode
+      setCart({});
+      setDetails({ name: "", phone: "", email: "", mode: "Takeaway", note: "" });
+      setPayment("upi");
+    }
+  }, [open, initialOrder, menu]);
+
   // Pricing helper
   const priceFor = (category: CategoryId, item: MenuItem) => {
     if (item.offerPrice !== undefined && item.offerPrice !== null) {
@@ -207,11 +259,17 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
         total,
         paymentMethod: payment,
         paid: payment !== "cod",
-        status: "Pending",
-        createdAt: new Date().toISOString(),
+        status: initialOrder ? initialOrder.status : "Pending",
+        createdAt: initialOrder ? initialOrder.createdAt : new Date().toISOString(),
       };
 
-      if (payment === "cod") {
+      if (initialOrder) {
+        // Edit Mode
+        await updateOrderItems(initialOrder, items);
+        onSuccess();
+        setSubmitting(false);
+        onClose();
+      } else if (payment === "cod") {
         const createRes = await createOrder(newOrder);
         const backendOrder = createRes && (createRes as any).data ? (createRes as any).data : createRes;
         const orderNumber = backendOrder.orderNumber || backendOrder.id || orderId;
@@ -415,7 +473,9 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
         <div className="w-full md:w-2/5 flex flex-col h-1/2 md:h-full bg-black/20">
           {/* Customer Form Header */}
           <div className="p-4 flex items-center justify-between shrink-0" style={{ borderBottom: `1px solid ${COLORS.line}` }}>
-            <h3 className="vb-display text-xl" style={{ color: COLORS.cream }}>Customer Details</h3>
+            <h3 className="vb-display text-xl" style={{ color: COLORS.cream }}>
+              {initialOrder ? `Edit Order #${initialOrder.id.slice(-5).toUpperCase()}` : "Customer Details"}
+            </h3>
             <button onClick={onClose} className="cursor-pointer" style={{ color: COLORS.muted }}>
               <X size={18} />
             </button>
@@ -581,7 +641,7 @@ export default function PlaceOrderModal({ open, onClose, onSuccess }: PlaceOrder
               className="w-full py-3 rounded-full text-xs font-bold uppercase tracking-wider hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
               style={{ background: COLORS.gold, color: COLORS.espresso }}
             >
-              {submitting ? "Placing Order..." : `Confirm & Place Order (${rupee(total)})`}
+              {submitting ? "Processing..." : initialOrder ? `Save Changes (${rupee(total)})` : `Confirm & Place Order (${rupee(total)})`}
             </button>
           </div>
         </div>

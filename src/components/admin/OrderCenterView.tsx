@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { Clock3, Store, UtensilsCrossed, X, Check, PackageCheck } from "lucide-react";
+import { Clock3, Store, UtensilsCrossed, X, Check, PackageCheck, Edit2 } from "lucide-react";
 import { rupee } from "../../utils/currency";
 import type { Order, OrderStatus } from "../../types";
+import PlaceOrderModal from "./PlaceOrderModal";
 
 const FILTERS: Array<"All" | OrderStatus> = [
   "All",
@@ -39,7 +40,7 @@ export default function OrderCenterView({
   onPaymentToggle,
 }: OrderCenterViewProps) {
   const [filter, setFilter] = useState<"All" | OrderStatus>("All");
-
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   const validOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -206,6 +207,15 @@ export default function OrderCenterView({
                         <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#8B7355] border border-[#e8dfd5]">
                           {order.status}
                         </span>
+                        {!done && (
+                          <button
+                            onClick={() => setEditingOrder(order)}
+                            className="ml-1 p-1 text-[#8B7355] hover:text-[#D4AF37] transition-colors rounded-full hover:bg-[#D4AF37]/10"
+                            title="Edit Order"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                        )}
                       </div>
                       <p className="mt-1 text-[13.5px] font-bold text-[#2C1810] truncate">
                         {order.customerName || "Walk-in Guest"}
@@ -312,6 +322,17 @@ export default function OrderCenterView({
           </div>
         )}
       </div>
+
+      <PlaceOrderModal
+        open={!!editingOrder}
+        onClose={() => setEditingOrder(null)}
+        initialOrder={editingOrder}
+        onSuccess={() => {
+          setEditingOrder(null);
+          // Assuming App.tsx handles global re-fetch or we dispatch the event
+          window.dispatchEvent(new CustomEvent("vb-orders-updated"));
+        }}
+      />
     </div>
   );
 }
