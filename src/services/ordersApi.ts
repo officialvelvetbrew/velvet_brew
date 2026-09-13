@@ -591,6 +591,15 @@ export async function updateOrderPaid(order: Order): Promise<Order | null> {
   }
 
   const result = await res.json();
+  
+  // If the admin manually marks an order as paid, it is always a CASH payment.
+  // Save this locally so the frontend doesn't default it to UPI since backend lacks a paymentMethod field.
+  if (order.paid) {
+    saveLocalPm(order.id, "cod");
+  } else {
+    saveLocalPm(order.id, "cod"); // even if marking unpaid, it's a manual cash order
+  }
+
   return result?.data ? mapBackendOrderToFrontend(result.data) : null;
 }
 
