@@ -30,11 +30,13 @@ const NEXT_STATUS: Record<string, OrderStatus> = {
 interface OrderCenterViewProps {
   orders: Order[];
   onStatusChange: (id: string, status: OrderStatus) => void;
+  onPaymentToggle?: (id: string, paid: boolean) => void;
 }
 
 export default function OrderCenterView({
   orders,
   onStatusChange,
+  onPaymentToggle,
 }: OrderCenterViewProps) {
   const [filter, setFilter] = useState<"All" | OrderStatus>("All");
 
@@ -260,11 +262,22 @@ export default function OrderCenterView({
                         <p className="font-display text-[18px] font-bold text-[#2C1810]">
                           {rupee(order.total)}
                         </p>
-                        <span 
-                          className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-green-100 text-green-700"
-                        >
-                          {order.paymentMethod === "upi" || order.paymentMethod === "card" ? "UPI/CARD" : "CASH"}
-                        </span>
+                        {order.paymentMethod === "upi" || order.paymentMethod === "card" ? (
+                          <span className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
+                            PAID (UPI/CARD)
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => onPaymentToggle?.(order.id, !order.paid)}
+                            className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors border ${
+                              order.paid
+                                ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
+                                : "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200"
+                            }`}
+                          >
+                            {order.paid ? "PAID (CASH)" : "UNPAID (CASH)"}
+                          </button>
+                        )}
                       </div>
 
                       <div className="flex shrink-0 gap-2">

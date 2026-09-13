@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { fetchOrders, updateOrderStatus } from "../services/ordersApi";
+import { fetchOrders, updateOrderStatus, updateOrderPaid } from "../services/ordersApi";
 import { getMenu } from "../api/menu";
 
 import type { Order, OrderStatus } from "../types";
@@ -60,6 +60,19 @@ export default function AdminDashboard() {
     const updated = { ...order, status };
     setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
     await updateOrderStatus(updated);
+  };
+
+  const handlePaymentToggle = async (id: string, paid: boolean) => {
+    const order = orders.find((o) => o.id === id);
+    if (!order) return;
+    const updated = { ...order, paid };
+    setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
+    try {
+      await updateOrderPaid(updated);
+    } catch (e) {
+      setOrders((prev) => prev.map((o) => (o.id === id ? order : o)));
+      console.error("Failed to update payment status", e);
+    }
   };
 
 
@@ -123,6 +136,7 @@ export default function AdminDashboard() {
             <OrderCenterView 
               orders={orders} 
               onStatusChange={handleStatusChange} 
+              onPaymentToggle={handlePaymentToggle}
             />
           )}
         </div>
