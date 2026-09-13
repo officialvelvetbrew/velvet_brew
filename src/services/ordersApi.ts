@@ -205,7 +205,8 @@ export async function fetchOrders(): Promise<Order[]> {
     }
   }
 
-  const token = customerToken || getAuthToken();
+  // For fetchOrders (Admin endpoint), always prioritize the Admin token over the customer token
+  const token = getAuthToken() || customerToken;
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
