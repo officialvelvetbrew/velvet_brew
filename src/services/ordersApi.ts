@@ -75,28 +75,6 @@ export function saveLocalPm(orderId: string, method: PaymentMethod): void {
   }
 }
 
-const PAID_STORAGE_KEY = "vb_order_paid_map";
-
-function getLocalPaidMap(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem(PAID_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-export function saveLocalPaid(orderId: string, paid: boolean): void {
-  if (!orderId) return;
-  try {
-    const map = getLocalPaidMap();
-    map[orderId] = paid;
-    localStorage.setItem(PAID_STORAGE_KEY, JSON.stringify(map));
-  } catch (e) {
-    console.error("Failed to save local paid status", e);
-  }
-}
-
 function mapBackendOrderToFrontend(o: any): Order {
   const customerName = o.customer?.fullName || o.customerName || o.fullName || "";
   const phone = o.customer?.mobile || o.mobile || o.phone || "";
@@ -139,15 +117,9 @@ function mapBackendOrderToFrontend(o: any): Order {
     else if (s === "REJECTED") status = "Rejected";
   }
 
-  const orderId = String(o.orderNumber || o.id || "");
-  const localPaidMap = getLocalPaidMap();
-  const localPaid = localPaidMap[orderId];
+  const paid = o.paymentStatus ? o.paymentStatus.toUpperCase() === "COMPLETED" || o.paymentStatus.toUpperCase() === "PAID" || o.paymentStatus.toUpperCase() === "SUCCESS" : false;
 
-  // If we have a local paid override, use it. Otherwise rely on backend status.
-  const paid = localPaid !== undefined 
-    ? localPaid 
-    : (o.paymentStatus ? o.paymentStatus.toUpperCase() === "COMPLETED" || o.paymentStatus.toUpperCase() === "PAID" || o.paymentStatus.toUpperCase() === "SUCCESS" : false);
-
+  const orderId = o.orderNumber || o.id || "";
   const localPmMap = getLocalPmMap();
   const localPm = localPmMap[orderId];
 
@@ -566,9 +538,6 @@ export async function updateOrderStatus(order: Order): Promise<Order | null> {
 
 /** Mark an order paid/unpaid — uses admin status endpoint with paymentStatus. */
 export async function updateOrderPaid(order: Order): Promise<Order | null> {
-  // Save locally so polling doesn't overwrite it while backend lacks support
-  saveLocalPaid(order.id, order.paid);
-
   if (USE_MOCK) {
     const orders = readStore();
     const idx = orders.findIndex((o) => o.id === order.id);
