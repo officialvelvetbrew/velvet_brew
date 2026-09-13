@@ -350,10 +350,9 @@ export async function fetchCustomerOrders(mobile: string, customerId?: string, i
             if (!cleanMobile || !oMobile) return false;
             return oMobile === cleanMobile || (cleanMobile.length >= 10 && cleanMobile.slice(-10) === oMobile.slice(-10));
           });
-          if (filtered.length > 0) {
-            return filtered;
-          }
+          return filtered;
         }
+        return []; // Return empty array if successful but no orders
       }
     } catch (err) {
       console.warn("Direct customer orders endpoint fetch failed, falling back to all orders filter:", err);
