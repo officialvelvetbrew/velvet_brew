@@ -142,11 +142,9 @@ function mapBackendOrderToFrontend(o: any): Order {
   } else if (rawPm.includes("cod") || rawPm.includes("cash")) {
     paymentMethod = "cod";
   } else if (!localPm && !paid && status === "Pending") {
-    // If backend returns nothing, and it's unpaid and pending, it's highly likely an abandoned online order.
-    // If it was truly COD, backend usually returns "COD", or it would have bypassed razorpay.
-    // To be safe, if we have NO data from backend, and NO local data, we shouldn't show it as CASH to the kitchen.
-    // Let's mark it as upi so it gets hidden from the kitchen board until paid.
-    paymentMethod = "upi";
+    // If backend returns nothing, and it's unpaid and pending, it might be COD or abandoned online.
+    // We MUST default to "cod" so it shows up on the admin dashboard!
+    paymentMethod = "cod";
   }
 
   return {
