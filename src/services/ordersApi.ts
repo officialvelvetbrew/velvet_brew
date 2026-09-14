@@ -124,8 +124,18 @@ function mapBackendOrderToFrontend(o: any): Order {
   const localPm = localPmMap[orderId];
 
   let paymentMethod: PaymentMethod = localPm || (paid ? "upi" : "cod");
+  let rawNote = o.specialInstructions || o.note || "";
+  let extractedPm = "";
 
-  const rawPm = (
+  if (rawNote.includes("[PAY:CASH]")) {
+    extractedPm = "cod";
+    rawNote = rawNote.replace("[PAY:CASH]", "").trim();
+  } else if (rawNote.includes("[PAY:UPI]")) {
+    extractedPm = "upi";
+    rawNote = rawNote.replace("[PAY:UPI]", "").trim();
+  }
+
+  const rawPm = extractedPm || (
     o.paymentMethod ||
     o.paymentMode ||
     o.paymentType ||
@@ -142,8 +152,8 @@ function mapBackendOrderToFrontend(o: any): Order {
   } else if (rawPm.includes("cod") || rawPm.includes("cash")) {
     paymentMethod = "cod";
   } else if (!localPm && !paid && status === "Pending") {
-    // If backend returns nothing, and it's unpaid and pending, it might be COD or abandoned online.
-    // We MUST default to "cod" so it shows up on the admin dashboard!
+    // If backend returns nothing, and no tag, and it's unpaid and pending, it might be COD or abandoned online.
+    // Default to "cod" so it shows up on the admin dashboard (as fallback for orders created before this fix).
     paymentMethod = "cod";
   }
 
@@ -153,7 +163,7 @@ function mapBackendOrderToFrontend(o: any): Order {
     phone,
     email,
     mode: o.mode || "Takeaway",
-    note: o.specialInstructions || o.note || "",
+    note: rawNote,
     items,
     subtotal: o.subtotal || 0,
     savings: o.discount || o.savings || 0,
@@ -417,7 +427,7 @@ export async function createOrder(order: Order): Promise<Order> {
       paymentMode: (order.paymentMethod || "cod").toUpperCase(),
       payment_method: (order.paymentMethod || "cod").toUpperCase(),
       payment_mode: (order.paymentMethod || "cod").toUpperCase(),
-      specialInstructions: order.note,
+      specialInstructions: order.note ? `[PAY:CASH] ${order.note}` : `[PAY:CASH]`,
       subtotal: order.subtotal || 0,
       tax: 0.00,
       discount: order.savings || 0,
@@ -662,6 +672,7 @@ export async function createPayment(order: Order): Promise<any> {
     offerCode: order.offerCode,
     paymentMethod: (order.paymentMethod || "upi").toUpperCase(),
     paymentMode: (order.paymentMethod || "upi").toUpperCase(),
+    specialInstructions: order.note ? `[PAY:UPI] ${order.note}` : `[PAY:UPI]`,
   };
 
   const res = await fetch(`${API_BASE}/payments`, {
