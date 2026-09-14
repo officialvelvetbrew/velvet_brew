@@ -173,19 +173,6 @@ export default function AdminSidebar({ activeView, onChangeView }: AdminSidebarP
                 </button>
               </div>
             </div>
-
-            {/* ADMINISTRATION */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355] mb-3 px-3">
-                Administration
-              </p>
-              <div className="space-y-1">
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#8B7355] cursor-not-allowed opacity-70">
-                  <Shield size={18} />
-                  Staff & Access
-                </button>
-              </div>
-            </div>
           </>
         )}
       </div>

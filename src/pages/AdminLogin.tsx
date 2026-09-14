@@ -124,7 +124,7 @@ export default function AdminLogin() {
         </div>
 
         <p className="relative text-[12px] text-white/40">
-          © 2026 Velvet Brew Café · Flagship, Indiranagar
+          © 2026 Velvet Brew Café
         </p>
       </div>
 
