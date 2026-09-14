@@ -68,7 +68,7 @@ export default function ItemsTab() {
     e.preventDefault();
     try {
       setSubmitting(true);
-      await createItem({
+      const payload = {
         categoryId: Number(itemForm.categoryId),
         supplierId: Number(itemForm.supplierId),
         name: itemForm.name,
@@ -76,10 +76,17 @@ export default function ItemsTab() {
         unit: itemForm.unit,
         minimumStock: Number(itemForm.minimumStock),
         maximumStock: Number(itemForm.maximumStock),
+        minStock: Number(itemForm.minimumStock), // Fallback
+        maxStock: Number(itemForm.maximumStock), // Fallback
         reorderLevel: Number(itemForm.reorderLevel),
         unitCost: Number(itemForm.unitCost),
-        currentStock: 0
-      });
+        currentStock: 0,
+        stock: 0, // Fallback for some backends
+        cost: Number(itemForm.unitCost), // Fallback
+        price: Number(itemForm.unitCost), // Fallback
+      };
+      console.log("Creating item with payload:", payload);
+      await createItem(payload as any);
       alert("Item created successfully!");
       setIsItemModalOpen(false);
       loadData();
