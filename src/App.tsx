@@ -59,6 +59,8 @@ export default function App() {
   const [payment, setPayment] =
     useState<PaymentMethod>("upi");
 
+  const [pendingPaymentOptions, setPendingPaymentOptions] = useState<any>(null);
+
   const [details, setDetails] = useState<Details>(() => {
     try {
       const saved = localStorage.getItem("vb_details");
@@ -353,34 +355,21 @@ export default function App() {
     });
   };
 
-  const changeQty = (
-    id: string,
-    delta: number
-  ) => {
+  const changeQty = (id: string, delta: number) => {
     setCart((prev) => {
       const current = prev[id];
-
       if (!current) return prev;
-
-      const qty =
-        current.qty + delta;
-
+      const qty = current.qty + delta;
       if (qty <= 0) {
-        const updated = {
-          ...prev,
-        };
-
-        delete updated[id];
-
-        return updated;
+        const next = { ...prev };
+        delete next[id];
+        setPendingPaymentOptions(null);
+        return next;
       }
-
+      setPendingPaymentOptions(null);
       return {
         ...prev,
-        [id]: {
-          ...current,
-          qty,
-        },
+        [id]: { ...current, qty },
       };
     });
   };
@@ -539,56 +528,61 @@ export default function App() {
           return;
         }
 
-        const initPaymentRes = await createPayment(order);
-        const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
+        let finalOptions = pendingPaymentOptions;
+        if (!finalOptions) {
+          const initPaymentRes = await createPayment(order);
+          const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
 
-        const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
-        const rzpKeyId = paymentData.key || paymentData.keyId;
-        const options = {
-          key: rzpKeyId,
-          amount: Math.round(finalTotalToPay * 100),
-          currency: paymentData.currency || "INR",
-          name: "Velvet Brew",
-          description: `Order Payment`,
-          order_id: rzpOrderId,
-          handler: async function (response: any) {
-            try {
-              // 1. Verify payment on backend
-              await verifyPayment({
-                razorpayOrderId: response.razorpay_order_id || rzpOrderId,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              });
+          const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
+          const rzpKeyId = paymentData.key || paymentData.keyId;
+          finalOptions = {
+            key: rzpKeyId,
+            amount: Math.round(finalTotalToPay * 100),
+            currency: paymentData.currency || "INR",
+            name: "Velvet Brew",
+            description: `Order Payment`,
+            order_id: rzpOrderId,
+            handler: async function (response: any) {
+              try {
+                // 1. Verify payment on backend
+                await verifyPayment({
+                  razorpayOrderId: response.razorpay_order_id || rzpOrderId,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                });
 
-              alert(`Payment successful!`);
+                alert(`Payment successful!`);
 
-              localStorage.removeItem("vb_pending_checkout");
-              setCheckoutOpen(false);
-              setCart({});
-              setDetails({ name: "", phone: "", email: "", mode: "Takeaway", note: "" });
-              setPayment("upi");
-            } catch (err: any) {
-              console.error("Payment verification failed:", err);
-              alert("Payment verification failed. Please contact support.");
-            }
-          },
-          modal: {
-            ondismiss: function () {
-              alert("Payment was cancelled or failed.");
-            }
-          },
-          prefill: {
-            name: details.name,
-            email: details.email,
-            contact: details.phone,
-          },
-          theme: {
-            color: "#C79A56",
-          },
-          redirect: false, // Prevent top-level redirect on mobile browsers
-        };
+                localStorage.removeItem("vb_pending_checkout");
+                setCheckoutOpen(false);
+                setCart({});
+                setDetails({ name: "", phone: "", email: "", mode: "Takeaway", note: "" });
+                setPayment("upi");
+                setPendingPaymentOptions(null);
+              } catch (err: any) {
+                console.error("Payment verification failed:", err);
+                alert("Payment verification failed. Please contact support.");
+              }
+            },
+            modal: {
+              ondismiss: function () {
+                alert("Payment was cancelled. You can click 'Pay' again to retry.");
+              }
+            },
+            prefill: {
+              name: details.name,
+              email: details.email,
+              contact: details.phone,
+            },
+            theme: {
+              color: "#C79A56",
+            },
+            redirect: false, // Prevent top-level redirect on mobile browsers
+          };
+          setPendingPaymentOptions(finalOptions);
+        }
 
-        const rzp = new (window as any).Razorpay(options);
+        const rzp = new (window as any).Razorpay(finalOptions);
         rzp.open();
       }
     } catch (err: any) {
