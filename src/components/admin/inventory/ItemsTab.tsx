@@ -97,7 +97,16 @@ export default function ItemsTab() {
       if (!itemId) throw new Error("Please enter a valid Item ID");
 
       if (opType === "STOCK_IN") {
-        await stockIn(itemId, { quantity: Number(opForm.quantity), unitCost: Number(opForm.unitCost), reason: opForm.reason });
+        const cost = Number(opForm.unitCost);
+        // First update the item's base unit cost so the backend uses it for this stock-in and future calculations
+        if (cost > 0) {
+          try {
+            await updateItem(itemId, { unitCost: cost });
+          } catch (e) {
+            console.error("Failed to update item base unit cost", e);
+          }
+        }
+        await stockIn(itemId, { quantity: Number(opForm.quantity), unitCost: cost, reason: opForm.reason });
       } else if (opType === "CONSUME") {
         await consumeStock(itemId, { quantity: Number(opForm.quantity), reason: opForm.reason });
       } else if (opType === "WASTAGE") {
