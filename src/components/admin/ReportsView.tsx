@@ -58,7 +58,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
 
   // ── Filter completed orders for revenue calculations ──────────────────────
   const completedOrders = useMemo(() => {
-    return filteredOrders.filter(o => (o.status || "").toLowerCase() === "completed");
+    return filteredOrders.filter(o => (o.status || "").toLowerCase() === "completed" && o.paid === true);
   }, [filteredOrders]);
 
   // ── KPIs ─────────────────────────────────────────────────────────────────
