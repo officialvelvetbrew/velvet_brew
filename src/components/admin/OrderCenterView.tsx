@@ -42,14 +42,7 @@ export default function OrderCenterView({
   const [filter, setFilter] = useState<"All" | OrderStatus>("All");
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
-  const validOrders = useMemo(() => {
-    return orders.filter((o) => {
-      if (o.paymentMethod === "cod") return true;
-      if (o.paid) return true;
-      if (["Accepted", "Preparing", "Ready", "Completed", "Rejected"].includes(o.status)) return true;
-      return false; // Hide unpaid pending online orders
-    });
-  }, [orders]);
+  const validOrders = useMemo(() => orders, [orders]);
 
   const live = validOrders.filter((o) => !["Completed", "Rejected"].includes(o.status));
   const visible = filter === "All" ? validOrders : validOrders.filter((o) => o.status === filter);
@@ -272,22 +265,18 @@ export default function OrderCenterView({
                         <p className="font-display text-[18px] font-bold text-[#2C1810]">
                           {rupee(order.total)}
                         </p>
-                        {order.paymentMethod === "upi" || order.paymentMethod === "card" ? (
-                          <span className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
-                            PAID (UPI/CARD)
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => onPaymentToggle?.(order.id, !order.paid)}
-                            className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors border ${
-                              order.paid
-                                ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
-                                : "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200"
-                            }`}
-                          >
-                            {order.paid ? "PAID (CASH)" : "UNPAID (CASH)"}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => onPaymentToggle?.(order.id, !order.paid)}
+                          className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors border ${
+                            order.paid
+                              ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
+                              : "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200"
+                          }`}
+                        >
+                          {order.paid 
+                            ? `PAID (${order.paymentMethod.toUpperCase()})` 
+                            : `UNPAID (${order.paymentMethod.toUpperCase()})`}
+                        </button>
                       </div>
 
                       <div className="flex shrink-0 gap-2">

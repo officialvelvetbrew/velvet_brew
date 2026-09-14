@@ -512,78 +512,14 @@ export default function App() {
         
         // Remove createOrder for online payments, createPayment handles it!
 
-        // Save pending checkout state to localStorage before opening Razorpay
-        localStorage.setItem("vb_pending_checkout", JSON.stringify({
-          orderNumber: orderNumber,
-          cart,
-          details,
-          payment,
-          amountToPay: finalTotalToPay
-        }));
-
-        const scriptLoaded = await loadRazorpayScript();
-        if (!scriptLoaded) {
-          alert("Failed to load Razorpay payment portal. Please check your internet connection.");
-          localStorage.removeItem("vb_pending_checkout");
-          return;
-        }
-
-        let finalOptions = pendingPaymentOptions;
-        if (!finalOptions) {
-          const initPaymentRes = await createPayment(order);
-          const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
-
-          const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
-          const rzpKeyId = paymentData.key || paymentData.keyId;
-          finalOptions = {
-            key: rzpKeyId,
-            amount: Math.round(finalTotalToPay * 100),
-            currency: paymentData.currency || "INR",
-            name: "Velvet Brew",
-            description: `Order Payment`,
-            order_id: rzpOrderId,
-            handler: async function (response: any) {
-              try {
-                // 1. Verify payment on backend
-                await verifyPayment({
-                  razorpayOrderId: response.razorpay_order_id || rzpOrderId,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                });
-
-                alert(`Payment successful!`);
-
-                localStorage.removeItem("vb_pending_checkout");
-                setCheckoutOpen(false);
-                setCart({});
-                setDetails({ name: "", phone: "", email: "", mode: "Takeaway", note: "" });
-                setPayment("upi");
-                setPendingPaymentOptions(null);
-              } catch (err: any) {
-                console.error("Payment verification failed:", err);
-                alert("Payment verification failed. Please contact support.");
-              }
-            },
-            modal: {
-              ondismiss: function () {
-                alert("Payment was cancelled. You can click 'Pay' again to retry.");
-              }
-            },
-            prefill: {
-              name: details.name,
-              email: details.email,
-              contact: details.phone,
-            },
-            theme: {
-              color: "#C79A56",
-            },
-            redirect: false, // Prevent top-level redirect on mobile browsers
-          };
-          setPendingPaymentOptions(finalOptions);
-        }
-
-        const rzp = new (window as any).Razorpay(finalOptions);
-        rzp.open();
+        await createOrder(order);
+        alert(`Order placed successfully!`);
+        localStorage.removeItem("vb_pending_checkout");
+        setCheckoutOpen(false);
+        setCart({});
+        setDetails({ name: "", phone: "", email: "", mode: "Takeaway", note: "" });
+        setPayment("upi");
+        setPendingPaymentOptions(null);
       }
     } catch (err: any) {
       console.error("Checkout process failed:", err);

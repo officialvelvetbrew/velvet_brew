@@ -161,91 +161,15 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
         createdAt: new Date().toISOString(),
       };
 
-      if (payment === "cod") {
-        await createOrder(newOrder);
-        setCart({});
-        setCustomerName("");
-        setCustomerPhone("");
-        setPayment("cod");
-        removeOffer();
-        setIsMobileCartOpen(false);
-        alert("Order placed successfully!");
-        setSubmitting(false);
-      } else {
-        const scriptLoaded = await loadRazorpayScript();
-        if (!scriptLoaded) {
-          setError("Failed to load Razorpay payment portal.");
-          setSubmitting(false);
-          return;
-        }
-
-        let finalOptions = pendingPaymentOptions;
-
-        if (!finalOptions) {
-          const initPaymentRes = await createPayment(newOrder);
-          const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
-
-          const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
-          const rzpKeyId = paymentData.key || paymentData.keyId;
-          
-          finalOptions = {
-            key: rzpKeyId,
-            amount: Math.round(finalTotal * 100),
-            currency: paymentData.currency || "INR",
-            name: "Velvet Brew",
-            description: `POS Order Payment`,
-            order_id: rzpOrderId,
-            handler: async function (response: any) {
-              try {
-                setSubmitting(true);
-                await verifyPayment({
-                  razorpayOrderId: response.razorpay_order_id || rzpOrderId,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                });
-                setCart({});
-                setCustomerName("");
-                setCustomerPhone("");
-                setPendingPaymentOptions(null);
-                setIsMobileCartOpen(false);
-                alert("Order & Payment successful!");
-              } catch (err) {
-                console.error(err);
-                alert("Payment verification failed.");
-              } finally {
-                setSubmitting(false);
-              }
-            },
-            modal: {
-              ondismiss: async function () {
-                setSubmitting(true);
-                try {
-                  alert("Payment was cancelled. You can click 'Place Order' again to retry.");
-                } catch (err) {
-                  console.error("Failed to dismiss payment", err);
-                } finally {
-                  setSubmitting(false);
-                }
-              }
-            },
-            theme: { color: "#2C1810" }
-          };
-          setPendingPaymentOptions(finalOptions);
-        }
-
-        const rzp = new (window as any).Razorpay(finalOptions);
-        rzp.on("payment.failed", async function (response: any) {
-          setSubmitting(true);
-          try {
-            alert(`Payment failed: ${response.error.description}`);
-          } catch (err) {
-            console.error(err);
-          } finally {
-            setSubmitting(false);
-          }
-        });
-        rzp.open();
-      }
+      await createOrder(newOrder);
+      setCart({});
+      setCustomerName("");
+      setCustomerPhone("");
+      setPayment("cod");
+      removeOffer();
+      setIsMobileCartOpen(false);
+      alert("Order placed successfully!");
+      setSubmitting(false);
     } catch (err) {
       console.error(err);
       setError("Failed to place order.");

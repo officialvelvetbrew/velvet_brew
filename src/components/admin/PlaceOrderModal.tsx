@@ -312,11 +312,8 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
         onSuccess();
         setSubmitting(false);
         onClose();
-      } else if (payment === "cod") {
-        const createRes = await createOrder(newOrder);
-        const backendOrder = createRes && (createRes as any).data ? (createRes as any).data : createRes;
-        const orderNumber = backendOrder.orderNumber || backendOrder.id || orderId;
-
+      } else {
+        await createOrder(newOrder);
         onSuccess();
         
         // Reset state
@@ -325,67 +322,6 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
         setPayment("upi");
         setSubmitting(false);
         onClose();
-      } else {
-        const scriptLoaded = await loadRazorpayScript();
-        if (!scriptLoaded) {
-          setError("Failed to load Razorpay payment portal. Please check your internet connection.");
-          setSubmitting(false);
-          return;
-        }
-
-        const initPaymentRes = await createPayment(newOrder);
-        const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
-
-        const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
-        const rzpKeyId = paymentData.key || paymentData.keyId;
-        const options = {
-          key: rzpKeyId,
-          amount: Math.round(total * 100),
-          currency: paymentData.currency || "INR",
-          name: "Velvet Brew",
-          description: `POS Order Payment`,
-          order_id: rzpOrderId,
-          handler: async function (response: any) {
-            try {
-              setSubmitting(true);
-              // 1. Verify payment on backend
-              await verifyPayment({
-                razorpayOrderId: response.razorpay_order_id || rzpOrderId,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              });
-
-              onSuccess();
-              
-              // Reset state
-              setCart({});
-              setDetails({ name: "", phone: "", email: "", mode: "Takeaway", note: "" });
-              setPayment("upi");
-              onClose();
-            } catch (err: any) {
-              console.error("Payment verification failed:", err);
-              setError("Payment verification failed. Please contact support.");
-            } finally {
-              setSubmitting(false);
-            }
-          },
-          prefill: {
-            name: details.name,
-            email: details.email,
-            contact: details.phone,
-          },
-          theme: {
-            color: "#C79A56",
-          },
-          modal: {
-            ondismiss: async function () {
-              setSubmitting(false);
-            },
-          },
-        };
-
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
       }
     } catch (err: any) {
       console.error(err);
