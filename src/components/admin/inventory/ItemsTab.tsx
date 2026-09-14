@@ -77,7 +77,8 @@ export default function ItemsTab() {
         minimumStock: Number(itemForm.minimumStock),
         maximumStock: Number(itemForm.maximumStock),
         reorderLevel: Number(itemForm.reorderLevel),
-        unitCost: Number(itemForm.unitCost)
+        unitCost: Number(itemForm.unitCost),
+        currentStock: 0
       });
       alert("Item created successfully!");
       setIsItemModalOpen(false);
