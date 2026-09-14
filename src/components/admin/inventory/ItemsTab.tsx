@@ -97,16 +97,25 @@ export default function ItemsTab() {
       if (!itemId) throw new Error("Please enter a valid Item ID");
 
       if (opType === "STOCK_IN") {
-        const cost = Number(opForm.unitCost);
-        // First update the item's base unit cost so the backend uses it for this stock-in and future calculations
-        if (cost > 0) {
+        const item = items.find((i) => i.id === itemId);
+        const oldQty = item?.currentStock || 0;
+        const oldCost = item?.unitCost || 0;
+        
+        const newQty = Number(opForm.quantity);
+        const newCost = Number(opForm.unitCost);
+        
+        if (newQty > 0 && newCost >= 0) {
+          // Calculate Weighted Average Cost (WAC)
+          const totalQty = oldQty + newQty;
+          const weightedCost = totalQty > 0 ? ((oldQty * oldCost) + (newQty * newCost)) / totalQty : newCost;
+          
           try {
-            await updateItem(itemId, { unitCost: cost });
+            await updateItem(itemId, { unitCost: Number(weightedCost.toFixed(2)) });
           } catch (e) {
             console.error("Failed to update item base unit cost", e);
           }
         }
-        await stockIn(itemId, { quantity: Number(opForm.quantity), unitCost: cost, reason: opForm.reason });
+        await stockIn(itemId, { quantity: newQty, unitCost: newCost, reason: opForm.reason });
       } else if (opType === "CONSUME") {
         await consumeStock(itemId, { quantity: Number(opForm.quantity), reason: opForm.reason });
       } else if (opType === "WASTAGE") {
