@@ -133,6 +133,9 @@ function mapBackendOrderToFrontend(o: any): Order {
   } else if (rawNote.includes("[PAY:UPI]")) {
     extractedPm = "upi";
     rawNote = rawNote.replace("[PAY:UPI]", "").trim();
+  } else if (rawNote.includes("[PAY:CARD]")) {
+    extractedPm = "card";
+    rawNote = rawNote.replace("[PAY:CARD]", "").trim();
   }
 
   const rawPm = extractedPm || (
@@ -428,7 +431,9 @@ export async function createOrder(order: Order): Promise<Order> {
       paymentMode: (order.paymentMethod || "cod").toUpperCase(),
       payment_method: (order.paymentMethod || "cod").toUpperCase(),
       payment_mode: (order.paymentMethod || "cod").toUpperCase(),
-      specialInstructions: order.note ? `[PAY:CASH] ${order.note}` : `[PAY:CASH]`,
+      specialInstructions: order.note 
+        ? `[PAY:${order.paymentMethod === "upi" ? "UPI" : order.paymentMethod === "card" ? "CARD" : "CASH"}] ${order.note}` 
+        : `[PAY:${order.paymentMethod === "upi" ? "UPI" : order.paymentMethod === "card" ? "CARD" : "CASH"}]`,
       subtotal: order.subtotal || 0,
       tax: 0.00,
       discount: order.savings || 0,
@@ -610,12 +615,11 @@ export async function updateOrderPaid(order: Order): Promise<Order | null> {
 
   const result = await res.json();
   
-  // If the admin manually marks an order as paid, it is always a CASH payment.
-  // Save this locally so the frontend doesn't default it to UPI since backend lacks a paymentMethod field.
+  // Preserve the existing payment method (e.g. upi, card, or cod) when toggling paid status
   if (order.paid) {
-    saveLocalPm(order.id, "cod");
+    saveLocalPm(order.id, order.paymentMethod || "cod");
   } else {
-    saveLocalPm(order.id, "cod"); // even if marking unpaid, it's a manual cash order
+    saveLocalPm(order.id, order.paymentMethod || "cod");
   }
 
   return result?.data ? mapBackendOrderToFrontend(result.data) : null;
