@@ -22,6 +22,7 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [pendingPaymentOptions, setPendingPaymentOptions] = useState<any>(null);
   const [offerCode, setOfferCode] = useState("");
   const [appliedOfferCode, setAppliedOfferCode] = useState<string | null>(null);
   const [offerDiscount, setOfferDiscount] = useState<number>(0);
@@ -56,15 +57,20 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
 
   const updateQty = (id: string, delta: number) => {
     setCart((prev) => {
-      const existing = prev[id];
-      if (!existing) return prev;
-      const nextQty = existing.qty + delta;
-      if (nextQty <= 0) {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
+      const current = prev[id];
+      if (!current) return prev;
+      const qty = current.qty + delta;
+      if (qty <= 0) {
+        const next = { ...prev };
+        delete next[id];
+        setPendingPaymentOptions(null);
+        return next;
       }
-      return { ...prev, [id]: { ...existing, qty: nextQty } };
+      setPendingPaymentOptions(null);
+      return {
+        ...prev,
+        [id]: { ...current, qty },
+      };
     });
   };
 
@@ -173,55 +179,61 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
           return;
         }
 
-        const initPaymentRes = await createPayment(newOrder);
-        const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
+        let finalOptions = pendingPaymentOptions;
 
-        const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
-        const rzpKeyId = paymentData.key || paymentData.keyId;
-        
-        const options = {
-          key: rzpKeyId,
-          amount: Math.round(finalTotal * 100),
-          currency: paymentData.currency || "INR",
-          name: "Velvet Brew",
-          description: `POS Order Payment`,
-          order_id: rzpOrderId,
-          handler: async function (response: any) {
-            try {
-              setSubmitting(true);
-              await verifyPayment({
-                razorpayOrderId: response.razorpay_order_id || rzpOrderId,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              });
-              setCart({});
-              setCustomerName("");
-              setCustomerPhone("");
-              setIsMobileCartOpen(false);
-              alert("Order & Payment successful!");
-            } catch (err) {
-              console.error(err);
-              alert("Payment verification failed.");
-            } finally {
-              setSubmitting(false);
-            }
-          },
-          modal: {
-            ondismiss: async function () {
-              setSubmitting(true);
+        if (!finalOptions) {
+          const initPaymentRes = await createPayment(newOrder);
+          const paymentData = initPaymentRes && initPaymentRes.data ? initPaymentRes.data : initPaymentRes;
+
+          const rzpOrderId = paymentData.orderId || paymentData.razorpay_order_id;
+          const rzpKeyId = paymentData.key || paymentData.keyId;
+          
+          finalOptions = {
+            key: rzpKeyId,
+            amount: Math.round(finalTotal * 100),
+            currency: paymentData.currency || "INR",
+            name: "Velvet Brew",
+            description: `POS Order Payment`,
+            order_id: rzpOrderId,
+            handler: async function (response: any) {
               try {
-                alert("Payment was cancelled or failed.");
+                setSubmitting(true);
+                await verifyPayment({
+                  razorpayOrderId: response.razorpay_order_id || rzpOrderId,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                });
+                setCart({});
+                setCustomerName("");
+                setCustomerPhone("");
+                setPendingPaymentOptions(null);
+                setIsMobileCartOpen(false);
+                alert("Order & Payment successful!");
               } catch (err) {
-                console.error("Failed to mark order as payment failed", err);
+                console.error(err);
+                alert("Payment verification failed.");
               } finally {
                 setSubmitting(false);
               }
-            }
-          },
-          theme: { color: "#2C1810" }
-        };
+            },
+            modal: {
+              ondismiss: async function () {
+                setSubmitting(true);
+                try {
+                  alert("Payment was cancelled. You can click 'Place Order' again to retry.");
+                } catch (err) {
+                  console.error("Failed to dismiss payment", err);
+                } finally {
+                  setSubmitting(false);
+                }
+              }
+            },
+            theme: { color: "#2C1810" }
+          };
+          setPendingPaymentOptions(finalOptions);
+        }
 
-        const rzp = new (window as any).Razorpay(options);
+        const rzp = new (window as any).Razorpay(finalOptions);
         rzp.on("payment.failed", async function (response: any) {
           setSubmitting(true);
           try {
@@ -520,17 +532,53 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
             )}
           </div>
 
-          <button
-            onClick={handleCharge}
-            disabled={cartItems.length === 0 || submitting}
-            className={`w-full py-4 rounded-2xl text-[15px] font-bold transition-all shadow-md ${
-              cartItems.length > 0 && !submitting
-                ? "bg-[#D4AF37] text-[#2C1810] hover:bg-[#c4a130]"
-                : "bg-[#e8dfd5] text-[#8B7355] cursor-not-allowed"
-            }`}
-          >
-            {submitting ? "Processing..." : `Charge ${rupee(subtotal)}`}
-          </button>
+          {pendingPaymentOptions ? (
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    setSubmitting(true);
+                    if (pendingPaymentOptions.order_id) {
+                      const { updateOrderStatus } = await import("../../services/ordersApi");
+                      await updateOrderStatus({ id: pendingPaymentOptions.order_id, status: "Rejected" } as any);
+                    }
+                  } catch (e) {
+                    console.error("Failed to cancel ticket", e);
+                  } finally {
+                    setCart({});
+                    setCustomerName("");
+                    setCustomerPhone("");
+                    setPendingPaymentOptions(null);
+                    setSubmitting(false);
+                    alert("Ticket cancelled successfully.");
+                  }
+                }}
+                disabled={submitting}
+                className="flex-1 py-4 rounded-2xl text-[15px] font-bold transition-all shadow-md bg-red-100 text-red-600 hover:bg-red-200"
+              >
+                Cancel Ticket
+              </button>
+              <button
+                onClick={handleCharge}
+                disabled={cartItems.length === 0 || submitting}
+                className="flex-[2] py-4 rounded-2xl text-[15px] font-bold transition-all shadow-md bg-[#D4AF37] text-[#2C1810] hover:bg-[#c4a130]"
+              >
+                {submitting ? "Processing..." : `Retry Payment`}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleCharge}
+              disabled={cartItems.length === 0 || submitting}
+              className={`w-full py-4 rounded-2xl text-[15px] font-bold transition-all shadow-md ${
+                cartItems.length > 0 && !submitting
+                  ? "bg-[#D4AF37] text-[#2C1810] hover:bg-[#c4a130]"
+                  : "bg-[#e8dfd5] text-[#8B7355] cursor-not-allowed"
+              }`}
+            >
+              {submitting ? "Processing..." : `Charge ${rupee(finalTotal)}`}
+            </button>
+          )}
         </div>
       </div>
 
