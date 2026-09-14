@@ -171,6 +171,7 @@ function mapBackendOrderToFrontend(o: any): Order {
     paymentMethod,
     paid,
     status,
+    offerCode: o.offerCode || o.promoCode || undefined,
     createdAt: o.orderedAt || o.createdAt || new Date().toISOString(),
   };
 }
@@ -506,7 +507,8 @@ export async function updateOrderItems(order: Order, newItems: any[]): Promise<O
   const payload = {
     customer: { fullName, mobile, email: order.email || "" },
     items: mappedItems,
-    specialInstructions: order.note || ""
+    specialInstructions: order.note || "",
+    offerCode: order.offerCode || undefined,
   };
   console.log("[updateOrderItems] Payload:", JSON.stringify(payload));
 

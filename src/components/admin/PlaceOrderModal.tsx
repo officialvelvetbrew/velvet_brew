@@ -5,6 +5,7 @@ import { rupee } from "../../utils/currency";
 import { CATEGORIES, MENU, PROMO_HOT_PRICE } from "../../data/menu";
 import { getMenu, getCategories } from "../../api/menu";
 import { createOrder, createPayment, verifyPayment, updateOrderPaid, updateOrderPaymentFailed, updateOrderItems } from "../../services/ordersApi";
+import { validateOffer } from "../../api/offers";
 import type { Category, MenuItem, CategoryId, Details, PaymentMethod, Order, OrderItemRecord } from "../../types";
 import { loadRazorpayScript } from "../../utils/razorpay";
 
@@ -32,10 +33,12 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
   });
   const [payment, setPayment] = useState<PaymentMethod>("upi");
   
-  // Cart state: itemId -> quantity
   const [cart, setCart] = useState<Record<string, { item: MenuItem; category: CategoryId; qty: number }>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [appliedOfferCode, setAppliedOfferCode] = useState<string | null>(null);
+  const [offerDiscount, setOfferDiscount] = useState<number>(0);
 
   // Load menu items and categories
   useEffect(() => {
@@ -130,6 +133,13 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
       });
       setPayment(initialOrder.paymentMethod || "cod");
       
+      setAppliedOfferCode(initialOrder.offerCode || null);
+      
+      // Calculate any previous offer discount. It's approximately initialOrder.savings - (menu item discounts)
+      // But since we will re-validate the offer against the backend, we can just leave it as 0 initially
+      // and it will update when we validate.
+      setOfferDiscount(0);
+
       const newCart: Record<string, any> = {};
       initialOrder.items.forEach(line => {
         // Find the item in the menu to get its full details
@@ -207,11 +217,44 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
     return cartItems.reduce((sum, line) => sum + line.item.price * line.qty, 0);
   }, [cartItems]);
 
-  const total = useMemo(() => {
+  const totalBeforeDiscount = useMemo(() => {
     return cartItems.reduce((sum, line) => sum + priceFor(line.category, line.item) * line.qty, 0);
   }, [cartItems]);
 
-  const savings = subtotal - total;
+  // Recalculate coupon discount if cart changes
+  useEffect(() => {
+    if (!appliedOfferCode || cartItems.length === 0) {
+      setOfferDiscount(0);
+      return;
+    }
+
+    let active = true;
+    async function revalidate() {
+      try {
+        const itemsPayload = cartItems.map(c => ({
+          menuId: Number(c.item.id) || Number(c.item.id.replace(/\D/g, "")) || 0,
+          quantity: c.qty
+        }));
+        const res = await validateOffer({
+          code: appliedOfferCode!,
+          mobile: details.phone.replace(/\D/g, "").length >= 10 ? details.phone : "9876543210",
+          items: itemsPayload
+        });
+        if (active) {
+          setOfferDiscount(res.discountAmount);
+        }
+      } catch (err) {
+        if (active) {
+          setOfferDiscount(0);
+        }
+      }
+    }
+    revalidate();
+    return () => { active = false; };
+  }, [cartItems, appliedOfferCode, details.phone]);
+
+  const savings = (subtotal - totalBeforeDiscount) + offerDiscount;
+  const total = Math.max(0, totalBeforeDiscount - offerDiscount);
 
   // Handle Form changes
   const handleInputChange = (field: keyof Details, val: string) => {
@@ -592,7 +635,7 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
                 </div>
                 {savings > 0 && (
                   <div className="flex justify-between font-medium" style={{ color: COLORS.success }}>
-                    <span>Savings</span>
+                    <span>{appliedOfferCode ? `Savings (incl. ${appliedOfferCode})` : "Savings"}</span>
                     <span>-{rupee(savings)}</span>
                   </div>
                 )}
