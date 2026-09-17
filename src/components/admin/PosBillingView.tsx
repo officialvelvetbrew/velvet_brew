@@ -123,8 +123,8 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
       setError("Customer Name is required.");
       return;
     }
-    if (!customerPhone.trim() || customerPhone.replace(/\D/g, "").length < 10) {
-      setError("Valid Phone Number is required.");
+    if (customerPhone.trim() && customerPhone.replace(/\D/g, "").length < 10) {
+      setError("Please enter a valid 10-digit mobile number if provided.");
       return;
     }
     if (cartItems.length === 0) return;

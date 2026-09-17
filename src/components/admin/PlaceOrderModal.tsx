@@ -267,8 +267,8 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
       setError("Please enter the customer's name");
       return;
     }
-    if (!details.phone.trim() || details.phone.replace(/\D/g, "").length < 10) {
-      setError("Please enter a valid 10-digit mobile number");
+    if (details.phone.trim() && details.phone.replace(/\D/g, "").length < 10) {
+      setError("Please enter a valid 10-digit mobile number if provided");
       return;
     }
     if (cartItems.length === 0) {
