@@ -444,7 +444,11 @@ export async function createOrder(order: Order): Promise<Order> {
       offerCode: order.offerCode || undefined,
     }),
   });
-  if (!res.ok) throw new Error("Failed to create order");
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Backend Error Response:", errText);
+    throw new Error("Failed to create order: " + errText);
+  }
   const responseData = await res.json();
   const created = responseData && responseData.data ? responseData.data : responseData;
   const createdId = created?.orderNumber || created?.id || order.id;
