@@ -417,7 +417,7 @@ export async function createOrder(order: Order): Promise<Order> {
     body: JSON.stringify({
       customer: {
         fullName: order.customerName,
-        mobile: order.phone,
+        ...(order.phone ? { mobile: order.phone } : {}),
         email: order.email || "",
       },
     items: order.items.map((item) => {
@@ -668,7 +668,7 @@ export async function createPayment(order: Order): Promise<any> {
   const backendRequest = {
     customer: {
       fullName: order.customerName,
-      mobile: order.phone,
+      ...(order.phone ? { mobile: order.phone } : {}),
       email: undefined,
     },
     items: order.items.map((i: any) => ({
