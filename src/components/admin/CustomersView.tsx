@@ -20,30 +20,50 @@ export default function CustomersView() {
       const completedOrders = (allOrders || []).filter(o => o.status === "Completed");
 
       const statsByPhone: Record<string, { spend: number, visits: number, lastVisit: string }> = {};
+      const statsByName: Record<string, { spend: number, visits: number, lastVisit: string }> = {};
+
       completedOrders.forEach(o => {
         const phone = (o.phone || "").replace(/\D/g, "");
-        if (!phone) return;
-        if (!statsByPhone[phone]) {
-           statsByPhone[phone] = { spend: 0, visits: 0, lastVisit: o.createdAt };
-        }
-        statsByPhone[phone].spend += (o.total || 0);
-        statsByPhone[phone].visits += 1;
+        const name = (o.customerName || "").trim().toLowerCase();
         
-        const oDate = new Date(o.createdAt.endsWith("Z") ? o.createdAt : o.createdAt + "Z").getTime();
-        const curDate = new Date(statsByPhone[phone].lastVisit.endsWith("Z") ? statsByPhone[phone].lastVisit : statsByPhone[phone].lastVisit + "Z").getTime();
-        if (oDate > curDate) {
-           statsByPhone[phone].lastVisit = o.createdAt;
+        let targetStats = null;
+        if (phone) {
+          if (!statsByPhone[phone]) statsByPhone[phone] = { spend: 0, visits: 0, lastVisit: o.createdAt };
+          targetStats = statsByPhone[phone];
+        } else if (name) {
+          if (!statsByName[name]) statsByName[name] = { spend: 0, visits: 0, lastVisit: o.createdAt };
+          targetStats = statsByName[name];
+        }
+
+        if (targetStats) {
+          targetStats.spend += (o.total || 0);
+          targetStats.visits += 1;
+          
+          const oDate = new Date(o.createdAt.endsWith("Z") ? o.createdAt : o.createdAt + "Z").getTime();
+          const curDate = new Date(targetStats.lastVisit.endsWith("Z") ? targetStats.lastVisit : targetStats.lastVisit + "Z").getTime();
+          if (oDate > curDate) {
+             targetStats.lastVisit = o.createdAt;
+          }
         }
       });
 
       let updatedCustomers = rawCustomers.map((c: any) => {
         const phone = (c.mobile || "").replace(/\D/g, "");
-        if (statsByPhone[phone]) {
+        const name = (c.fullName || "").trim().toLowerCase();
+        
+        let stats = null;
+        if (phone && statsByPhone[phone]) {
+          stats = statsByPhone[phone];
+        } else if (!phone && name && statsByName[name]) {
+          stats = statsByName[name];
+        }
+
+        if (stats) {
            return {
              ...c,
-             lifetimeSpend: statsByPhone[phone].spend,
-             totalVisits: statsByPhone[phone].visits,
-             lastVisit: statsByPhone[phone].lastVisit
+             lifetimeSpend: stats.spend,
+             totalVisits: stats.visits,
+             lastVisit: stats.lastVisit
            };
         }
         return {
