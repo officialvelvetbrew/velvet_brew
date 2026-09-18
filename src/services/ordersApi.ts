@@ -418,7 +418,7 @@ export async function createOrder(order: Order): Promise<Order> {
       customer: {
         fullName: order.customerName,
         ...(order.phone ? { mobile: order.phone } : {}),
-        email: order.email || (order.phone ? "" : "guest@velvetbrew.in"),
+        ...(order.email ? { email: order.email } : {}),
       },
     items: order.items.map((item) => {
       const menuId = Number(item.id) || Number(item.id.replace(/\D/g, "")) || 0;
@@ -673,7 +673,7 @@ export async function createPayment(order: Order): Promise<any> {
     customer: {
       fullName: order.customerName,
       ...(order.phone ? { mobile: order.phone } : {}),
-      email: order.email || (order.phone ? undefined : "guest@velvetbrew.in"),
+      ...(order.email ? { email: order.email } : {}),
     },
     items: order.items.map((i: any) => ({
       menuId: i.menuId || Number(i.id),
