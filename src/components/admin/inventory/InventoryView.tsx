@@ -4,10 +4,11 @@ import CategoriesTab from "./CategoriesTab";
 import SuppliersTab from "./SuppliersTab";
 import ItemsTab from "./ItemsTab";
 import MovementsTab from "./MovementsTab";
+import RecipesTab from "./RecipesTab";
 import DashboardTab from "./DashboardTab";
 
 export default function InventoryView() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "items" | "categories" | "movements">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "items" | "categories" | "movements" | "recipes">("dashboard");
 
   return (
     <div className="h-full flex flex-col bg-[#FDFBF7] font-['Jost',sans-serif]">
@@ -45,6 +46,17 @@ export default function InventoryView() {
             Items
           </button>
           <button
+            onClick={() => setActiveTab("recipes")}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-semibold whitespace-nowrap transition-colors ${
+              activeTab === "recipes"
+                ? "border-[#2C1810] text-[#2C1810]"
+                : "border-transparent text-[#8B7355] hover:text-[#2C1810] hover:border-[#8B7355]/30"
+            }`}
+          >
+            <span className="text-lg leading-none">📖</span>
+            Recipes
+          </button>
+          <button
             onClick={() => setActiveTab("categories")}
             className={`flex items-center gap-2 px-4 py-3 border-b-2 font-semibold whitespace-nowrap transition-colors ${
               activeTab === "categories"
@@ -55,7 +67,6 @@ export default function InventoryView() {
             <Tags size={18} />
             Categories
           </button>
-
           <button
             onClick={() => setActiveTab("movements")}
             className={`flex items-center gap-2 px-4 py-3 border-b-2 font-semibold whitespace-nowrap transition-colors ${
@@ -74,8 +85,8 @@ export default function InventoryView() {
       <div className="flex-1 overflow-hidden p-6">
         {activeTab === "dashboard" && <DashboardTab />}
         {activeTab === "items" && <ItemsTab />}
+        {activeTab === "recipes" && <RecipesTab />}
         {activeTab === "categories" && <CategoriesTab />}
-
         {activeTab === "movements" && <MovementsTab />}
       </div>
     </div>

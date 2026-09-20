@@ -48,3 +48,13 @@ export interface StockMovement {
   // This structure is a safe type to contain raw data since it wasn't provided,
   // we will just safely render any keys returned by the API if these don't exist.
 }
+
+export interface RecipeIngredient {
+  inventoryItemId: number;
+  quantity: number;
+}
+
+export interface Recipe {
+  menuItemId: number | string;
+  ingredients: RecipeIngredient[];
+}
