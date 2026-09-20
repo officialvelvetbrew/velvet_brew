@@ -173,16 +173,17 @@ export async function saveRecipe(recipe: import("../types/inventory").Recipe): P
     quantity: Number(item.quantity)
   }));
 
-  // Workaround: The backend PATCH /inventory/recipes/{id} throws a 500 Internal Server Error.
-  // We'll delete the existing recipe and recreate it using POST.
   if (recipe.id) {
-    try {
-      await fetchAndUnwrap(`${API_BASE}/inventory/recipes/${recipe.id}`, {
-        method: "DELETE",
-      });
-    } catch (e) {
-      console.warn("Failed to delete existing recipe before update", e);
-    }
+    return fetchAndUnwrap(`${API_BASE}/inventory/recipes/${recipe.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: recipe.name || "",
+        description: recipe.description || "",
+        enabled: recipe.enabled ?? true,
+        items: items,
+      }),
+    });
   }
   
   return fetchAndUnwrap(`${API_BASE}/inventory/recipes`, {
@@ -190,8 +191,8 @@ export async function saveRecipe(recipe: import("../types/inventory").Recipe): P
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       menuItemId: recipe.menuItemId,
-      name: recipe.name,
-      description: recipe.description,
+      name: recipe.name || "",
+      description: recipe.description || "",
       items: items,
     }),
   });
