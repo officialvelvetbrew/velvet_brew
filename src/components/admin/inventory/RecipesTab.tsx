@@ -7,14 +7,14 @@ import type { Recipe } from "../../../types/inventory";
 import EditRecipeModal from "./EditRecipeModal";
 
 export default function RecipesTab() {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
   const [editingRecipe, setEditingRecipe] = useState<{
-    menuItem: MenuItem;
+    menuItem: any;
     recipe: Recipe | null;
   } | null>(null);
 
