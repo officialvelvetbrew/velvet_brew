@@ -118,7 +118,7 @@ export default function RecipesTab() {
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#f3eee7] flex items-center justify-center shrink-0 overflow-hidden">
                         {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          <img src={item.imageUrl.startsWith("s3://velvetbrew/") ? item.imageUrl.replace("s3://velvetbrew/", "https://velvetbrew.s3.ap-south-1.amazonaws.com/") : item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-lg">☕</span>
                         )}
