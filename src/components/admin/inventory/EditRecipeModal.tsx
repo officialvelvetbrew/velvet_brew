@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { X, Plus } from "lucide-react";
 import type { InventoryItem } from "../../../types";
-import type { Recipe, RecipeIngredient } from "../../../types/inventory";
+import type { Recipe, RecipeItem } from "../../../types/inventory";
 
 interface EditRecipeModalProps {
   menuItem: {
@@ -22,8 +22,8 @@ export default function EditRecipeModal({
   onClose,
   onSave,
 }: EditRecipeModalProps) {
-  const [ingredients, setIngredients] = useState<RecipeIngredient[]>(
-    initialRecipe ? initialRecipe.ingredients : []
+  const [ingredients, setIngredients] = useState<RecipeItem[]>(
+    initialRecipe ? initialRecipe.items || [] : []
   );
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -70,7 +70,8 @@ export default function EditRecipeModal({
     try {
       await onSave({
         menuItemId: menuItem.id,
-        ingredients,
+        name: menuItem.name,
+        items: ingredients,
       });
       onClose();
     } catch (err) {

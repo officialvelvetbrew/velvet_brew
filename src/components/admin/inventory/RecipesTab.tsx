@@ -93,8 +93,8 @@ export default function RecipesTab() {
               let cost = 0;
               let ingredientsDisplay: React.ReactNode[] = [];
               
-              if (recipe && recipe.ingredients.length > 0) {
-                ingredientsDisplay = recipe.ingredients.map(ing => {
+              if (recipe && recipe.items && recipe.items.length > 0) {
+                ingredientsDisplay = recipe.items.map(ing => {
                   const invItem = inventoryItems.find(i => i.id === ing.inventoryItemId);
                   if (invItem) {
                     cost += invItem.unitCost * ing.quantity;

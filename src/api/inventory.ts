@@ -159,34 +159,21 @@ export async function getMovements(id: number): Promise<StockMovement[]> {
 }
 
 // ----------------------------------------------------
-// RECIPES (MOCK)
+// RECIPES
 // ----------------------------------------------------
 
-// Mock local storage for recipes until API is provided
-const RECIPES_STORAGE_KEY = "vb_mock_recipes";
-
 export async function getRecipes(): Promise<import("../types/inventory").Recipe[]> {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  const stored = localStorage.getItem(RECIPES_STORAGE_KEY);
-  if (stored) {
-    return JSON.parse(stored);
-  }
-  return [];
+  const res = await fetchAndUnwrap(`${API_BASE}/inventory/recipes`);
+  return Array.isArray(res) ? res : [];
 }
 
 export async function saveRecipe(recipe: import("../types/inventory").Recipe): Promise<import("../types/inventory").Recipe> {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  const stored = localStorage.getItem(RECIPES_STORAGE_KEY);
-  let recipes: import("../types/inventory").Recipe[] = stored ? JSON.parse(stored) : [];
-  
-  const existingIdx = recipes.findIndex(r => String(r.menuItemId) === String(recipe.menuItemId));
-  if (existingIdx >= 0) {
-    recipes[existingIdx] = recipe;
-  } else {
-    recipes.push(recipe);
-  }
-  
-  localStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(recipes));
-  return recipe;
+  // If it already has an ID, we could PATCH it. 
+  // However, the Swagger docs say POST /api/v1/inventory/recipes takes CreateRecipeRequest
+  // which includes menuItemId, name, description, and items.
+  return fetchAndUnwrap(`${API_BASE}/inventory/recipes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(recipe),
+  });
 }
