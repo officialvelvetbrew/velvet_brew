@@ -168,9 +168,19 @@ export async function getRecipes(): Promise<import("../types/inventory").Recipe[
 }
 
 export async function saveRecipe(recipe: import("../types/inventory").Recipe): Promise<import("../types/inventory").Recipe> {
-  // If it already has an ID, we could PATCH it. 
-  // However, the Swagger docs say POST /api/v1/inventory/recipes takes CreateRecipeRequest
-  // which includes menuItemId, name, description, and items.
+  if (recipe.id) {
+    return fetchAndUnwrap(`${API_BASE}/inventory/recipes/${recipe.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: recipe.name,
+        description: recipe.description,
+        enabled: recipe.enabled,
+        items: recipe.items,
+      }),
+    });
+  }
+  
   return fetchAndUnwrap(`${API_BASE}/inventory/recipes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

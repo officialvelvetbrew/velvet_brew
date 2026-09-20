@@ -69,6 +69,7 @@ export default function EditRecipeModal({
     setSubmitting(true);
     try {
       await onSave({
+        id: initialRecipe?.id,
         menuItemId: menuItem.id,
         name: menuItem.name,
         items: ingredients,
