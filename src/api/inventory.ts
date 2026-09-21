@@ -182,7 +182,6 @@ export async function saveRecipe(recipe: import("../types/inventory").Recipe): P
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        menuItemId: recipe.menuItemId,
         name: recipe.name || "",
         description: recipe.description || "",
         enabled: recipe.enabled ?? true,
