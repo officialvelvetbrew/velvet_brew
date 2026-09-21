@@ -13,6 +13,7 @@ interface EditRecipeModalProps {
   inventoryItems: InventoryItem[];
   onClose: () => void;
   onSave: (recipe: Recipe) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
 }
 
 export default function EditRecipeModal({
@@ -21,6 +22,7 @@ export default function EditRecipeModal({
   inventoryItems,
   onClose,
   onSave,
+  onDelete,
 }: EditRecipeModalProps) {
   const [ingredients, setIngredients] = useState<RecipeItem[]>(
     initialRecipe ? initialRecipe.items || [] : []
@@ -81,6 +83,20 @@ export default function EditRecipeModal({
     }
   };
 
+  const handleDelete = async () => {
+    if (!initialRecipe?.id) return;
+    if (confirm("Are you sure you want to delete this recipe?")) {
+      setSubmitting(true);
+      try {
+        await onDelete(initialRecipe.id);
+        onClose();
+      } catch (err) {
+        console.error(err);
+        setSubmitting(false);
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-[24px] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -95,12 +111,23 @@ export default function EditRecipeModal({
                 Quantities deducted from stock for every single unit sold
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-[#FDFBF7] rounded-full transition-colors text-[#8B7355] hover:text-[#2C1810]"
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              {initialRecipe?.id && (
+                <button
+                  onClick={handleDelete}
+                  disabled={submitting}
+                  className="px-3 py-1.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-[#FDFBF7] rounded-full transition-colors text-[#8B7355] hover:text-[#2C1810]"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Ingredients List */}

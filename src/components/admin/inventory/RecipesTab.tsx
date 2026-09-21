@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
-import { getItems, getRecipes, saveRecipe } from "../../../api/inventory";
+import { getItems, getRecipes, saveRecipe, deleteRecipe } from "../../../api/inventory";
 import { getMenu } from "../../../api/menu";
 import type { InventoryItem, MenuItem } from "../../../types";
 import type { Recipe } from "../../../types/inventory";
@@ -45,6 +45,11 @@ export default function RecipesTab() {
       }
       return [...prev, saved];
     });
+  };
+
+  const handleDeleteRecipe = async (id: number) => {
+    await deleteRecipe(id);
+    setRecipes(prev => prev.filter(r => r.id !== id));
   };
 
   const filteredMenu = menuItems.filter(item => 
@@ -178,6 +183,7 @@ export default function RecipesTab() {
           inventoryItems={inventoryItems}
           onClose={() => setEditingRecipe(null)}
           onSave={handleSaveRecipe}
+          onDelete={handleDeleteRecipe}
         />
       )}
     </div>

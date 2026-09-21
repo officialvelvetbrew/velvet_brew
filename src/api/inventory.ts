@@ -201,3 +201,9 @@ export async function saveRecipe(recipe: import("../types/inventory").Recipe): P
     }),
   });
 }
+
+export async function deleteRecipe(id: number): Promise<void> {
+  await fetchAndUnwrap(`${API_BASE}/inventory/recipes/${id}`, {
+    method: "DELETE",
+  });
+}
