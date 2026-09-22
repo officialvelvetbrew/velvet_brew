@@ -447,13 +447,18 @@ export async function createOrder(order: Order): Promise<Order> {
   if (!res.ok) {
     const errText = await res.text();
     console.error("Backend Error Response:", errText);
+    let parsedMsg = "";
     try {
       const errJson = JSON.parse(errText);
       if (errJson && errJson.message) {
-        throw new Error(errJson.message);
+        parsedMsg = errJson.message;
       }
     } catch (e) {
       // Ignored parsing error
+    }
+    
+    if (parsedMsg) {
+      throw new Error(parsedMsg);
     }
     throw new Error("Failed to create order: " + errText);
   }
