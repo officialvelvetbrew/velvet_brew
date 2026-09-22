@@ -172,9 +172,11 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
       setIsMobileCartOpen(false);
       showAlert("Order placed successfully!");
       setSubmitting(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to place order.");
+      const msg = err.message || "Failed to place order.";
+      setError(msg);
+      showAlert(msg, true);
       setSubmitting(false);
     }
   };
