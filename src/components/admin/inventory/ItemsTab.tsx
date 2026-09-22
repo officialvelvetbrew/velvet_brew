@@ -3,6 +3,7 @@ import { Plus, Package, Activity, AlertCircle } from "lucide-react";
 import { createItem, updateItem, stockIn, consumeStock, wastageStock, adjustStock } from "../../../api/inventory";
 import { getCategories, getSuppliers, getItems } from "../../../api/inventory";
 import type { InventoryCategory, Supplier, InventoryItem } from "../../../types";
+import { useAlert } from "../../../contexts/AlertContext";
 
 export default function ItemsTab() {
   const [categories, setCategories] = useState<InventoryCategory[]>([]);
@@ -18,6 +19,8 @@ export default function ItemsTab() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { showAlert } = useAlert();
+  
   const loadData = async () => {
     try {
       setLoading(true);
@@ -31,7 +34,7 @@ export default function ItemsTab() {
       setItems(itms);
     } catch (err: any) {
       console.error(err);
-      alert("Failed to load inventory items: " + err.message);
+      showAlert("Failed to load inventory items: " + err.message, true);
     } finally {
       setLoading(false);
     }
@@ -87,11 +90,11 @@ export default function ItemsTab() {
       };
       console.log("Creating item with payload:", payload);
       await createItem(payload as any);
-      alert("Item created successfully!");
+      showAlert("Item created successfully!");
       setIsItemModalOpen(false);
       loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to create item");
+      showAlert(err.message || "Failed to create item", true);
     } finally {
       setSubmitting(false);
     }
@@ -132,11 +135,11 @@ export default function ItemsTab() {
         await adjustStock(itemId, { type: opForm.adjustmentType, quantity: Number(opForm.quantity), reason: opForm.reason });
       }
       
-      alert(`${opType} operation successful!`);
+      showAlert(`${opType} operation successful!`);
       setIsOpModalOpen(false);
       loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to perform operation");
+      showAlert(err.message || "Failed to perform operation", true);
     } finally {
       setSubmitting(false);
     }

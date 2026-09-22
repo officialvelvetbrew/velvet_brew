@@ -3,6 +3,7 @@ import { Search, Plus, Minus, Trash2, Banknote, Smartphone, CreditCard } from "l
 import { rupee } from "../../utils/currency";
 import { createOrder, createPayment, verifyPayment, updateOrderPaid, updateOrderPaymentFailed } from "../../services/ordersApi";
 import { loadRazorpayScript } from "../../utils/razorpay";
+import { useAlert } from "../../contexts/AlertContext";
 import type { Order, PaymentMethod } from "../../types";
 import { validateOffer } from "../../api/offers";
 
@@ -11,6 +12,7 @@ interface PosBillingViewProps {
 }
 
 export default function PosBillingView({ items }: PosBillingViewProps) {
+  const { showAlert } = useAlert();
   const [query, setQuery] = useState("");
   const [channel, setChannel] = useState<"Dine-in" | "Takeaway">("Dine-in");
   const [cat, setCat] = useState<string>("1");
@@ -168,7 +170,7 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
       setPayment("cod");
       removeOffer();
       setIsMobileCartOpen(false);
-      alert("Order placed successfully!");
+      showAlert("Order placed successfully!");
       setSubmitting(false);
     } catch (err) {
       console.error(err);
@@ -474,7 +476,7 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
                     setCustomerPhone("");
                     setPendingPaymentOptions(null);
                     setSubmitting(false);
-                    alert("Ticket cancelled successfully.");
+                    showAlert("Ticket cancelled successfully.");
                   }
                 }}
                 disabled={submitting}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, Tag, Calendar, Percent, Currency, Activity } from "lucide-react";
 import { getAdminOffers, createOffer, updateOffer, deleteOffer, ApiOffer, CreateOfferRequest } from "../../api/offers";
+import { useAlert } from "../../contexts/AlertContext";
 
 export default function OffersView() {
   const [offers, setOffers] = useState<ApiOffer[]>([]);
@@ -83,16 +84,22 @@ export default function OffersView() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to deactivate and soft-delete this offer?")) return;
-    try {
-      setLoading(true);
-      await deleteOffer(id);
-      await loadOffers();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete");
-      setLoading(false);
-    }
+  const { showAlert, showConfirm } = useAlert();
+
+  const handleDelete = (id: number) => {
+    showConfirm(
+      "Are you sure you want to deactivate and soft-delete this offer?",
+      async () => {
+        try {
+          setLoading(true);
+          await deleteOffer(id);
+          await loadOffers();
+        } catch (err: any) {
+          showAlert(err.message || "Failed to delete", true);
+          setLoading(false);
+        }
+      }
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,7 +130,7 @@ export default function OffersView() {
       setIsModalOpen(false);
       await loadOffers();
     } catch (err: any) {
-      alert(err.message || "Failed to save offer");
+      showAlert(err.message || "Failed to save offer", true);
     } finally {
       setSubmitting(false);
     }

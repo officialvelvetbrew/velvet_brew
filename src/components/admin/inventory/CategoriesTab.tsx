@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../../../api/inventory";
 import type { InventoryCategory } from "../../../types";
+import { useAlert } from "../../../contexts/AlertContext";
 
 export default function CategoriesTab() {
   const [categories, setCategories] = useState<InventoryCategory[]>([]);
@@ -43,16 +44,22 @@ export default function CategoriesTab() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this category?")) return;
-    try {
-      setLoading(true);
-      await deleteCategory(id);
-      await loadCategories();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete");
-      setLoading(false);
-    }
+  const { showAlert, showConfirm } = useAlert();
+
+  const handleDelete = (id: number) => {
+    showConfirm(
+      "Are you sure you want to delete this category?",
+      async () => {
+        try {
+          setLoading(true);
+          await deleteCategory(id);
+          await loadCategories();
+        } catch (err: any) {
+          showAlert(err.message || "Failed to delete", true);
+          setLoading(false);
+        }
+      }
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,7 +74,7 @@ export default function CategoriesTab() {
       setIsModalOpen(false);
       await loadCategories();
     } catch (err: any) {
-      alert(err.message || "Failed to save category");
+      showAlert(err.message || "Failed to save category", true);
     } finally {
       setSubmitting(false);
     }

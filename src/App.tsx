@@ -22,6 +22,7 @@ import { createOrder, createPayment, verifyPayment, updateOrderPaid, updateOrder
 import { validateOffer, ValidateOfferResponse } from "./api/offers";
 import { loadRazorpayScript } from "./utils/razorpay";
 import type { Order } from "./types";
+import { useAlert } from "./contexts/AlertContext";
 
 import type {
   CartItem,
@@ -33,6 +34,8 @@ import type {
 } from "./types";
 
 export default function App() {
+  const { showAlert } = useAlert();
+  
   const [activeCategory, setActiveCategory] =
     useState<CategoryId | "all">("all");
 
@@ -119,7 +122,7 @@ export default function App() {
           if (backendOrder.paymentStatus === "PAID" || ["ACCEPTED", "PREPARING", "READY", "COMPLETED"].includes(backendOrder.orderStatus)) {
             localStorage.removeItem("vb_pending_checkout");
             setCart({});
-            alert(`Your payment for order #${pending.orderNumber} was successful!`);
+            showAlert(`Your payment for order #${pending.orderNumber} was successful!`);
             return;
           }
         }
@@ -437,7 +440,7 @@ export default function App() {
 
   const confirmOrder = async () => {
     if (!details.phone || !details.phone.trim()) {
-      alert("Please enter phone number");
+      showAlert("Please enter phone number", true);
       return;
     }
 
@@ -484,7 +487,7 @@ export default function App() {
         const backendOrder = createRes && (createRes as any).data ? (createRes as any).data : createRes;
         const orderNumber = backendOrder.orderNumber || backendOrder.id || id;
 
-        alert(`Order placed successfully! Order ID: ${orderNumber}`);
+        showAlert(`Order placed successfully! Order ID: ${orderNumber}`);
 
         setCheckoutOpen(false);
         setCart({});
@@ -513,7 +516,7 @@ export default function App() {
         // Remove createOrder for online payments, createPayment handles it!
 
         await createOrder(order);
-        alert(`Order placed successfully!`);
+        showAlert(`Order placed successfully!`);
         localStorage.removeItem("vb_pending_checkout");
         setCheckoutOpen(false);
         setCart({});
@@ -523,7 +526,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error("Checkout process failed:", err);
-      alert("Checkout failed: " + err.message);
+      showAlert("Checkout failed: " + err.message, true);
     }
   };
   return (

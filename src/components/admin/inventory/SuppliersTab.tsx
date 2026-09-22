@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, Power, PowerOff } from "lucide-react";
 import { getSuppliers, createSupplier, updateSupplier, toggleSupplier, deleteSupplier } from "../../../api/inventory";
 import type { Supplier } from "../../../types";
+import { useAlert } from "../../../contexts/AlertContext";
 
 export default function SuppliersTab() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -66,16 +67,22 @@ export default function SuppliersTab() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this supplier?")) return;
-    try {
-      setLoading(true);
-      await deleteSupplier(id);
-      await loadSuppliers();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete");
-      setLoading(false);
-    }
+  const { showAlert, showConfirm } = useAlert();
+
+  const handleDelete = (id: number) => {
+    showConfirm(
+      "Are you sure you want to delete this supplier?",
+      async () => {
+        try {
+          setLoading(true);
+          await deleteSupplier(id);
+          await loadSuppliers();
+        } catch (err: any) {
+          showAlert(err.message || "Failed to delete", true);
+          setLoading(false);
+        }
+      }
+    );
   };
 
   const handleToggle = async (id: number, enabled: boolean) => {
@@ -84,7 +91,7 @@ export default function SuppliersTab() {
       await toggleSupplier(id, enabled);
       await loadSuppliers();
     } catch (err: any) {
-      alert(err.message || "Failed to toggle supplier status");
+      showAlert(err.message || "Failed to toggle supplier status", true);
       setLoading(false);
     }
   };
@@ -105,7 +112,7 @@ export default function SuppliersTab() {
       setIsModalOpen(false);
       await loadSuppliers();
     } catch (err: any) {
-      alert(err.message || "Failed to save supplier");
+      showAlert(err.message || "Failed to save supplier", true);
     } finally {
       setSubmitting(false);
     }

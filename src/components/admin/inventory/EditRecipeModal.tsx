@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Trash2 } from "lucide-react";
 import type { InventoryItem } from "../../../types";
 import type { Recipe, RecipeItem } from "../../../types/inventory";
+import { useAlert } from "../../../contexts/AlertContext";
 
 interface EditRecipeModalProps {
   menuItem: {
@@ -83,18 +84,23 @@ export default function EditRecipeModal({
     }
   };
 
-  const handleDelete = async () => {
+  const { showConfirm } = useAlert();
+
+  const handleDelete = () => {
     if (!initialRecipe?.id) return;
-    if (confirm("Are you sure you want to delete this recipe?")) {
-      setSubmitting(true);
-      try {
-        await onDelete(initialRecipe.id);
-        onClose();
-      } catch (err) {
-        console.error(err);
-        setSubmitting(false);
+    showConfirm(
+      "Are you sure you want to delete this recipe?",
+      async () => {
+        setSubmitting(true);
+        try {
+          await onDelete(initialRecipe.id!);
+          onClose();
+        } catch (err) {
+          console.error(err);
+          setSubmitting(false);
+        }
       }
-    }
+    );
   };
 
   return (
