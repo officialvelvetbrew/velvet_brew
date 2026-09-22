@@ -123,13 +123,8 @@ export default function OfferStrip({ promoPrice }: OfferStripProps) {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6">
           
-          {/* Left Content Area: Custom Emoji + Code Badge + Headline + Description */}
+          {/* Left Content Area: Code Badge + Headline + Description */}
           <div className="flex items-start gap-4 sm:gap-6 flex-1">
-            {/* Custom Emoji Icon */}
-            <div className="text-4xl sm:text-5xl shrink-0 select-none animate-bounce duration-1000">
-              {currentEmoji}
-            </div>
-
             <div className="space-y-2">
               {/* Badges Row (Coupon Code only) */}
               <div className="flex items-center gap-2">
@@ -139,8 +134,11 @@ export default function OfferStrip({ promoPrice }: OfferStripProps) {
                 </span>
               </div>
 
-              {/* Title */}
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FDFBF7] tracking-tight leading-tight">
+              {/* Title with inline Emoji */}
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FDFBF7] tracking-tight leading-tight flex items-center gap-3">
+                <span className="inline-block animate-bounce duration-1000 origin-bottom">
+                  {currentEmoji}
+                </span>
                 {getOfferHeadline(currentOffer)}
               </h2>
 

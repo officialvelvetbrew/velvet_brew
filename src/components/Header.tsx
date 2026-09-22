@@ -9,7 +9,6 @@ const LINKS = [
   { id: 'menu', label: 'Menu' },
   { id: 'offers', label: 'Offers' },
   { id: 'visit', label: 'Visit Us' },
-  { id: 'blogs', label: 'Blogs' },
 ];
 
 export default function Header({
@@ -62,7 +61,7 @@ export default function Header({
           {LINKS.map((l) => (
             <a
               key={l.id}
-              href={l.id === 'blogs' ? '/blogs' : "/#$($l.id)"}
+              href={`/#${l.id}`}
               className="rounded-xl px-3.5 py-2 text-[13px] font-semibold uppercase tracking-wider transition-colors"
               style={{ color: 'rgba(253, 251, 247, 0.7)' }}
               onMouseEnter={(e) => {
