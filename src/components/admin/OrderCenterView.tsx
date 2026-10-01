@@ -224,13 +224,20 @@ export default function OrderCenterView({
                       </p>
                     </div>
 
-                    <span
-                      className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold tabular-nums whitespace-nowrap ${
-                        stale ? "bg-red-50 text-red-600" : "bg-white border border-[#e8dfd5] text-[#2C1810]"
-                      }`}
-                    >
-                      {formatAge(mins)}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold tabular-nums whitespace-nowrap ${
+                          stale ? "bg-red-50 text-red-600" : "bg-white border border-[#e8dfd5] text-[#2C1810]"
+                        }`}
+                      >
+                        {formatAge(mins)}
+                      </span>
+                      {order.createdAt && (
+                        <span className="text-[9px] font-semibold uppercase tracking-wider text-[#8B7355]">
+                          {new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
                   </header>
 
                   <div className="flex-1 px-5 py-4">
