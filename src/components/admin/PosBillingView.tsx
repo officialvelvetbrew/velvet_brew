@@ -52,7 +52,6 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((i) => {
-      if (i.available === false || i.enabled === false) return false;
       const matchCat = cat === "all" || String(i.categoryId) === cat;
       const matchQuery = !q || i.name.toLowerCase().includes(q);
       return matchCat && matchQuery;
@@ -258,8 +257,12 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
           {filtered.map((item) => (
             <div
               key={item.id}
-              onClick={() => addToCart(item)}
-              className="group overflow-hidden rounded-3xl border border-[#e8dfd5] bg-white text-left shadow-sm transition-shadow hover:shadow-md cursor-pointer select-none flex flex-col"
+              onClick={() => {
+                if (item.available !== false && item.enabled !== false) {
+                  addToCart(item);
+                }
+              }}
+              className={`group overflow-hidden rounded-3xl border border-[#e8dfd5] bg-white text-left shadow-sm transition-shadow hover:shadow-md select-none flex flex-col ${(item.available === false || item.enabled === false) ? "opacity-60 grayscale cursor-not-allowed" : "cursor-pointer"}`}
             >
               <div className="aspect-[5/3] w-full bg-[#2C1810] flex items-center justify-center relative overflow-hidden pattern-dots shrink-0">
                 {item.imageUrl ? (
@@ -273,6 +276,11 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
                   <span className="text-4xl relative z-10">{
                     categories.find(c => String(item.categoryId) === c.id)?.emoji || "☕"
                   }</span>
+                )}
+                {(item.available === false || item.enabled === false) && (
+                  <div className="absolute inset-0 bg-black/40 flex flex-col justify-center items-center backdrop-blur-[1px] z-20">
+                    <span className="bg-red-600 text-white text-[10px] sm:text-xs font-bold px-2 py-1 rounded-md text-center">Currently<br/>Unavailable</span>
+                  </div>
                 )}
               </div>
               <div className="p-3 md:p-4 flex flex-col flex-1 min-w-0">

@@ -42,15 +42,20 @@ export default function MenuCard({
             }}
         >
             {item.imageUrl && (
-                <div className="w-full h-40 bg-black/20 shrink-0">
+                <div className="w-full h-40 bg-black/20 shrink-0 relative">
                     <img 
                         src={item.imageUrl} 
                         alt={item.name} 
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${(item.available === false || (item as any).enabled === false) ? 'opacity-50 grayscale' : ''}`}
                         onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                         }}
                     />
+                    {(item.available === false || (item as any).enabled === false) && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[1px]">
+                            <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded shadow-md">Currently Unavailable</span>
+                        </div>
+                    )}
                 </div>
             )}
             
@@ -120,7 +125,10 @@ export default function MenuCard({
                     </span>
                 </div>
 
-                {qtyInCart === 0 ? (
+                {(item.available === false || (item as any).enabled === false) ? (
+                    <div className="shrink-0 flex items-center justify-center w-9 h-9 opacity-50 cursor-not-allowed">
+                    </div>
+                ) : qtyInCart === 0 ? (
                     <button
                         onClick={() => onAdd(category, item)}
                         className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full transition-transform hover:scale-110"

@@ -53,7 +53,7 @@ export default function MenuSection({
 
   const allItems = useMemo(() => {
     return Object.entries(menu).flatMap(([catId, items]) => 
-      items.filter(i => i.available !== false && (i as any).enabled !== false).map(item => ({ ...item, categoryId: catId as CategoryId }))
+      items.map(item => ({ ...item, categoryId: catId as CategoryId }))
     );
   }, [menu]);
 
