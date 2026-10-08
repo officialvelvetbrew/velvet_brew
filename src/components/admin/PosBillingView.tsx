@@ -31,12 +31,23 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
   const [validatingOffer, setValidatingOffer] = useState(false);
   const [offerError, setOfferError] = useState<string | null>(null);
 
-  const categories = [
-    { id: "1", name: "Hot Coffee", emoji: "☕" },
-    { id: "2", name: "Cold Coffee", emoji: "🧊" },
-    { id: "3", name: "Shakes", emoji: "🥤" },
-    { id: "4", name: "Café Bites", emoji: "🥐" },
-  ];
+  const categories = useMemo(() => {
+    const map = new Map<string, { id: string, name: string, emoji: string }>();
+    items.forEach(i => {
+      const catId = String(i.categoryId);
+      if (!map.has(catId)) {
+        const nameNorm = (i.categoryName || "").toLowerCase();
+        let emoji = "🍽️";
+        if (nameNorm.includes("hot")) emoji = "☕";
+        else if (nameNorm.includes("cold")) emoji = "🧊";
+        else if (nameNorm.includes("shake")) emoji = "🥤";
+        else if (nameNorm.includes("bite") || nameNorm.includes("food")) emoji = "🥐";
+        
+        map.set(catId, { id: catId, name: i.categoryName || "Category", emoji });
+      }
+    });
+    return Array.from(map.values());
+  }, [items]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-export type CategoryId = "hot" | "cold" | "shakes" | "bites";
+export type CategoryId = string;
 
 export type PaymentMethod = "upi" | "card" | "cod";
 

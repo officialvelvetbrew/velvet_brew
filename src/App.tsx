@@ -143,31 +143,12 @@ export default function App() {
   const [menuLoading, setMenuLoading] = useState(true);
   const [menuError, setMenuError] = useState<string | null>(null);
 
-  const mapCategoryKey = (id: number, name: string): CategoryId => {
-    if (id === 1) return "hot";
-    if (id === 2) return "cold";
-    if (id === 3) return "shakes";
-    if (id === 4) return "bites";
-
+  const getCategoryIcon = (name: string) => {
     const norm = (name || "").toLowerCase();
-    if (norm.includes("hot")) return "hot";
-    if (norm.includes("cold")) return "cold";
-    if (norm.includes("shake")) return "shakes";
-    return "bites";
-  };
-
-  const getCategoryIcon = (key: CategoryId) => {
-    switch (key) {
-      case "hot":
-        return Coffee;
-      case "cold":
-        return Snowflake;
-      case "shakes":
-        return CupSoda;
-      case "bites":
-      default:
-        return UtensilsCrossed;
-    }
+    if (norm.includes("hot")) return Coffee;
+    if (norm.includes("cold")) return Snowflake;
+    if (norm.includes("shake")) return CupSoda;
+    return UtensilsCrossed;
   };
 
   useEffect(() => {
@@ -182,11 +163,10 @@ export default function App() {
         if (!active) return;
 
         const mappedCategories: Category[] = apiCategories.map((cat) => {
-          const key = mapCategoryKey(cat.id, cat.name);
           return {
-            id: key,
+            id: String(cat.id),
             label: cat.name,
-            icon: getCategoryIcon(key),
+            icon: getCategoryIcon(cat.name),
           };
         });
 
@@ -199,15 +179,14 @@ export default function App() {
           }
         });
 
-        const newMenu: Record<CategoryId, MenuItem[]> = {
-          hot: [],
-          cold: [],
-          shakes: [],
-          bites: [],
-        };
+        const newMenu: Record<CategoryId, MenuItem[]> = {};
+        uniqueCategories.forEach(cat => {
+            newMenu[cat.id] = [];
+        });
 
         apiItems.forEach((item) => {
-          const category = mapCategoryKey(item.categoryId, item.categoryName);
+          const category = String(item.categoryId);
+          if (!newMenu[category]) newMenu[category] = [];
 
           let parsedImageUrl = item.imageUrl;
           if (parsedImageUrl && parsedImageUrl.startsWith('s3://velvetbrew/')) {
@@ -264,11 +243,10 @@ export default function App() {
       ]);
 
       const mappedCategories: Category[] = apiCategories.map((cat) => {
-        const key = mapCategoryKey(cat.id, cat.name);
         return {
-          id: key,
+          id: String(cat.id),
           label: cat.name,
-          icon: getCategoryIcon(key),
+          icon: getCategoryIcon(cat.name),
         };
       });
 
@@ -281,15 +259,14 @@ export default function App() {
         }
       });
 
-      const newMenu: Record<CategoryId, MenuItem[]> = {
-        hot: [],
-        cold: [],
-        shakes: [],
-        bites: [],
-      };
+      const newMenu: Record<CategoryId, MenuItem[]> = {};
+      uniqueCategories.forEach(cat => {
+          newMenu[cat.id] = [];
+      });
 
       apiItems.forEach((item) => {
-        const category = mapCategoryKey(item.categoryId, item.categoryName);
+        const category = String(item.categoryId);
+        if (!newMenu[category]) newMenu[category] = [];
 
         let parsedImageUrl = item.imageUrl;
         if (parsedImageUrl && parsedImageUrl.startsWith('s3://velvetbrew/')) {
