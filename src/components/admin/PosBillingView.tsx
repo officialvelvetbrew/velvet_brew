@@ -41,6 +41,7 @@ export default function PosBillingView({ items }: PosBillingViewProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((i) => {
+      if (i.available === false || i.enabled === false) return false;
       const matchCat = cat === "all" || String(i.categoryId) === cat;
       const matchQuery = !q || i.name.toLowerCase().includes(q);
       return matchCat && matchQuery;
