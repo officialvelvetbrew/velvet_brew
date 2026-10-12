@@ -33,15 +33,34 @@ function parseOrderDate(raw: any): Date {
 
 export default function ReportsView({ orders }: ReportsViewProps) {
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "monthly" | "yearly">("daily");
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
 
   const now = new Date();
-  const todayLabel = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const selectedDateObj = useMemo(() => {
+    if (!selectedDate) return now;
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }, [selectedDate]);
+
+  const isSelectedToday = isSameDay(selectedDateObj, now);
+
+  const selectedDateLabel = selectedDateObj.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 
   // ── Filter orders by time window ─────────────────────────────────────────
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       const d = parseOrderDate(o.createdAt);
-      if (activeTab === "daily") return isSameDay(d, now);
+      if (activeTab === "daily") return isSameDay(d, selectedDateObj);
       if (activeTab === "weekly") {
         const startOfWeek = new Date(now);
         startOfWeek.setDate(now.getDate() - now.getDay());
@@ -54,7 +73,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
       // yearly
       return d.getFullYear() === now.getFullYear();
     });
-  }, [orders, activeTab]);
+  }, [orders, activeTab, selectedDateObj]);
 
   // ── Filter completed orders for revenue calculations ──────────────────────
   const completedOrders = useMemo(() => {
@@ -146,7 +165,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
   } as React.CSSProperties;
 
   // ── Tab label ─────────────────────────────────────────────────────────────
-  const tabLabel = activeTab === "daily" ? `Today — ${todayLabel}` :
+  const tabLabel = activeTab === "daily" ? (isSelectedToday ? `Today — ${selectedDateLabel}` : selectedDateLabel) :
     activeTab === "weekly" ? "This Week" :
     activeTab === "monthly" ? now.toLocaleDateString("en-IN", { month: "long", year: "numeric" }) :
     String(now.getFullYear());
@@ -177,7 +196,7 @@ export default function ReportsView({ orders }: ReportsViewProps) {
       </div>
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto w-full">
-        {/* Tab Selector */}
+        {/* Tab Selector & Date Picker */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center bg-white border border-[#e8dfd5] rounded-full p-1">
             {(["Daily", "Weekly", "Monthly", "Yearly"] as const).map((tab) => {
@@ -197,13 +216,70 @@ export default function ReportsView({ orders }: ReportsViewProps) {
             })}
           </div>
 
-          <div className="flex items-center gap-2 bg-white border border-[#e8dfd5] rounded-full px-4 py-2 text-sm font-semibold text-[#2C1810]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#8B7355]"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            {tabLabel}
-            {activeTab === "daily" && (
-              <span className="bg-[#FDFBF7] border border-[#D4AF37] text-[#8B7355] text-[10px] px-1.5 py-0.5 rounded ml-1">
-                {now.getHours() < 22 ? "IN PROGRESS" : "DONE"}
-              </span>
+          <div className="flex items-center gap-2">
+            {activeTab === "daily" ? (
+              <div className="flex items-center gap-2 bg-white border border-[#e8dfd5] hover:border-[#D4AF37] transition-all rounded-full px-3 py-1.5 shadow-sm text-sm font-semibold text-[#2C1810]">
+                <label htmlFor="report-date-picker" className="flex items-center gap-2 cursor-pointer select-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#8B7355]">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span className="font-medium text-[#2C1810]">
+                    {isSelectedToday ? `Today (${selectedDateLabel})` : selectedDateLabel}
+                  </span>
+                </label>
+
+                {/* Native HTML Date Picker styled neatly */}
+                <input
+                  id="report-date-picker"
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setSelectedDate(e.target.value);
+                    }
+                  }}
+                  className="bg-transparent text-xs text-[#2C1810] font-medium border-l border-[#e8dfd5] pl-2 outline-none cursor-pointer"
+                  title="Select Date"
+                />
+
+                {isSelectedToday ? (
+                  <span className="bg-[#FDFBF7] border border-[#D4AF37] text-[#8B7355] text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">
+                    {now.getHours() < 22 ? "IN PROGRESS" : "DONE"}
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <span className="bg-gray-100 border border-gray-300 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold">
+                      CLOSED
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date();
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, "0");
+                        const day = String(d.getDate()).padStart(2, "0");
+                        setSelectedDate(`${year}-${month}-${day}`);
+                      }}
+                      className="text-[11px] text-[#8B7355] hover:text-[#2C1810] underline font-medium cursor-pointer"
+                    >
+                      Reset Today
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 bg-white border border-[#e8dfd5] rounded-full px-4 py-2 text-sm font-semibold text-[#2C1810]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#8B7355]">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {tabLabel}
+              </div>
             )}
           </div>
         </div>
@@ -513,7 +589,8 @@ export default function ReportsView({ orders }: ReportsViewProps) {
                     const blob = new Blob([csv], { type: "text/csv" });
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
-                    a.download = `velvetbrew_report_${activeTab}_${now.toISOString().slice(0,10)}.csv`;
+                    const dateStamp = activeTab === "daily" ? selectedDate : now.toISOString().slice(0, 10);
+                    a.download = `velvetbrew_report_${activeTab}_${dateStamp}.csv`;
                     a.click();
                   }}
                 >
