@@ -3,6 +3,27 @@ import { Plus, Edit2, Trash2, Tag, Calendar, Percent, Currency, Activity } from 
 import { getAdminOffers, createOffer, updateOffer, deleteOffer, ApiOffer, CreateOfferRequest } from "../../api/offers";
 import { useAlert } from "../../contexts/AlertContext";
 
+// Helpers to properly handle local datetime-local without losing timezone offset
+function toLocalISOString(dateInput?: string | null): string | null {
+  if (!dateInput) return null;
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function fromISOToInput(isoString?: string | null): string | null {
+  if (!isoString) return null;
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export default function OffersView() {
   const [offers, setOffers] = useState<ApiOffer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,8 +95,8 @@ export default function OffersView() {
       discountValue: off.discountValue,
       maxDiscountAmount: off.maxDiscountAmount || null,
       minOrderAmount: off.minOrderAmount,
-      startsAt: off.startsAt ? off.startsAt.substring(0, 16) : null,
-      endsAt: off.endsAt ? off.endsAt.substring(0, 16) : null,
+      startsAt: fromISOToInput(off.startsAt),
+      endsAt: fromISOToInput(off.endsAt),
       maxUsesTotal: off.maxUsesTotal || null,
       maxUsesPerCustomer: off.maxUsesPerCustomer || null,
       emoji: extractedEmoji,
@@ -113,8 +134,8 @@ export default function OffersView() {
       if (!payload.maxDiscountAmount) payload.maxDiscountAmount = null;
       if (!payload.maxUsesTotal) payload.maxUsesTotal = null;
       if (!payload.maxUsesPerCustomer) payload.maxUsesPerCustomer = null;
-      if (!payload.startsAt) payload.startsAt = null; else payload.startsAt += ":00";
-      if (!payload.endsAt) payload.endsAt = null; else payload.endsAt += ":00";
+      payload.startsAt = toLocalISOString(payload.startsAt);
+      payload.endsAt = toLocalISOString(payload.endsAt);
 
       // Encode emoji in description for backward compatibility
       const rawDesc = (formData.description || "").replace(/^\[.+?\]\s*/, "");
