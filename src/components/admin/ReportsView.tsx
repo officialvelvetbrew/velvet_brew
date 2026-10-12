@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Bell, Store, TrendingUp, ShoppingBag, Star, Download } from "lucide-react";
+import { Bell, Store, TrendingUp, ShoppingBag, Star, Download, Printer } from "lucide-react";
 import type { Order } from "../../types";
 import { rupee } from "../../utils/currency";
 
@@ -172,6 +172,200 @@ export default function ReportsView({ orders }: ReportsViewProps) {
 
   const isEmpty = filteredOrders.length === 0;
 
+  // ── High Quality Visual Report Generator (PDF / Print / Printable HTML) ───
+  const handleExportVisualReport = (autoPrint: boolean = false) => {
+    const reportTitle = `Velvet Brew · ${activeTab.toUpperCase()} REPORT`;
+    const periodLabel = activeTab === "daily" ? (isSelectedToday ? `Today (${selectedDateLabel})` : selectedDateLabel) : tabLabel;
+    
+    // Top items rows
+    const topItemsRows = topItems.map((item, idx) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f0ebe4; font-size:13px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="display:inline-block; width:22px; height:22px; line-height:22px; text-align:center; background:#f4ede4; color:#8B7355; border-radius:4px; font-weight:700; font-size:11px;">#${idx + 1}</span>
+          <span style="color:#2C1810; font-weight:600;">${item.name}</span>
+        </div>
+        <div style="text-align:right;">
+          <strong style="color:#2C1810;">₹${item.revenue.toLocaleString("en-IN")}</strong>
+          <span style="color:#8B7355; font-size:11px; margin-left:6px;">(${item.qty} units)</span>
+        </div>
+      </div>
+    `).join("") || '<p style="color:#8B7355; font-size:13px; font-style:italic;">No items data available.</p>';
+
+    // Categories breakdown bars
+    const catKeys = [
+      { key: "hot", label: "Hot Coffee", color: "#D4AF37" },
+      { key: "cold", label: "Cold Brews", color: "#5C3A21" },
+      { key: "shakes", label: "Shakes", color: "#C69C2B" },
+      { key: "bites", label: "Bites & Snacks", color: "#8B5A2B" },
+    ];
+    const catRows = catKeys.map(({ key, label, color }) => {
+      const rev = categoryRevenue[key] || 0;
+      const pct = netSales > 0 ? Math.round((rev / netSales) * 100) : 0;
+      return `
+        <div style="margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; color:#2C1810; margin-bottom:4px;">
+            <span><span style="display:inline-block; width:10px; height:10px; background:${color}; border-radius:2px; margin-right:6px;"></span>${label}</span>
+            <span>₹${rev.toLocaleString("en-IN")} <span style="color:#8B7355; font-weight:normal;">(${pct}%)</span></span>
+          </div>
+          <div style="width:100%; height:8px; background:#f4ede4; border-radius:99px; overflow:hidden;">
+            <div style="width:${pct}%; height:100%; background:${color}; border-radius:99px;"></div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Hourly bar chart in visual format
+    const hourlyBars = HOURS.map((h) => {
+      const val = hourlyRev[h] || 0;
+      const pct = maxHourlyRev > 0 ? (val / maxHourlyRev) * 100 : 0;
+      return `
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; height:120px; justify-content:flex-end;">
+          <div style="font-size:9px; color:#8B7355; margin-bottom:2px; font-weight:600;">${val > 0 ? `₹${val}` : ""}</div>
+          <div style="width:100%; max-width:18px; height:${Math.max(pct, val > 0 ? 6 : 2)}%; background:${val > 0 ? "#D4AF37" : "#eee7de"}; border-radius:4px 4px 0 0;"></div>
+          <div style="font-size:9px; color:#8B7355; margin-top:4px; font-weight:600;">${h}</div>
+        </div>
+      `;
+    }).join("");
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${reportTitle} - ${periodLabel}</title>
+        <meta charset="utf-8"/>
+        <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Jost', sans-serif; }
+          body { background: #FDFBF7; color: #2C1810; padding: 32px; }
+          .container { max-width: 900px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #E8DFD5; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F0EBE4; padding-bottom: 20px; margin-bottom: 24px; }
+          .logo { font-size: 24px; font-weight: 800; color: #2C1810; letter-spacing: 1px; }
+          .logo span { color: #D4AF37; }
+          .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+          .kpi-card { background: #FDFBF7; border: 1px solid #E8DFD5; border-radius: 12px; padding: 16px; }
+          .kpi-card.gold { background: #D4AF37; color: #2C1810; border-color: #D4AF37; }
+          .kpi-card.dark { background: #2C1810; color: #FDFBF7; border-color: #2C1810; }
+          .kpi-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; margin-bottom: 6px; }
+          .kpi-value { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+          .kpi-sub { font-size: 11px; opacity: 0.7; font-weight: 600; }
+          .card { background: #ffffff; border: 1px solid #E8DFD5; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+          .card-title { font-size: 15px; font-weight: 700; color: #2C1810; margin-bottom: 2px; }
+          .card-sub { font-size: 11px; color: #8B7355; margin-bottom: 16px; }
+          .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+          .print-bar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 16px; }
+          .btn { background: #2C1810; color: #fff; padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+          .btn-gold { background: #D4AF37; color: #2C1810; }
+          @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; background: #fff; }
+            .container { border: none; box-shadow: none; padding: 12px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print print-bar">
+          <button class="btn btn-gold" onclick="window.print()">🖨️ Print / Save as PDF</button>
+          <button class="btn" onclick="window.close()">Close Window</button>
+        </div>
+
+        <div class="container">
+          <div class="header">
+            <div>
+              <div class="logo">VELVET <span>BREW</span></div>
+              <p style="font-size:12px; color:#8B7355; margin-top:3px;">Flagship Café · Operations & Analytics Report</p>
+            </div>
+            <div style="text-align:right;">
+              <h2 style="font-size:18px; font-weight:700; color:#2C1810;">${reportTitle}</h2>
+              <p style="font-size:12px; color:#8B7355; margin-top:2px;">Period: <strong>${periodLabel}</strong></p>
+              <p style="font-size:11px; color:#A4907C; margin-top:2px;">Generated: ${new Date().toLocaleTimeString("en-IN")}, ${new Date().toLocaleDateString("en-IN")}</p>
+            </div>
+          </div>
+
+          <!-- KPI Summary -->
+          <div class="kpi-grid">
+            <div class="kpi-card gold">
+              <div class="kpi-title">Net Sales</div>
+              <div class="kpi-value">₹${netSales.toLocaleString("en-IN")}</div>
+              <div class="kpi-sub">${numCompleted} orders paid</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">Total Orders</div>
+              <div class="kpi-value">${numOrders}</div>
+              <div class="kpi-sub">${numCompleted} completed</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">Avg Order Value</div>
+              <div class="kpi-value">₹${avgOrderValue.toLocaleString("en-IN")}</div>
+              <div class="kpi-sub">per completed order</div>
+            </div>
+            <div class="kpi-card dark">
+              <div class="kpi-title" style="color:#D4AF37;">Payment Breakdown</div>
+              <div class="kpi-value" style="font-size:20px;">Cash: ${cashPct}%</div>
+              <div class="kpi-sub" style="color:#e8dfd5;">Online: ${onlinePct}% · ₹${onlineTotal.toLocaleString("en-IN")}</div>
+            </div>
+          </div>
+
+          <!-- Hourly Sales Distribution Chart (Daily) -->
+          ${activeTab === "daily" ? `
+            <div class="card">
+              <div class="card-title">Hourly Sales Activity (6:00 AM – 10:00 PM)</div>
+              <div class="card-sub">Real distribution of revenue generated by hour</div>
+              <div style="display:flex; align-items:flex-end; gap:6px; border-bottom:1px solid #E8DFD5; padding-bottom:8px;">
+                ${hourlyBars}
+              </div>
+            </div>
+          ` : ""}
+
+          <!-- 2 Columns: Top Selling Items + Category & Mode Mix -->
+          <div class="grid-2">
+            <div class="card" style="margin-bottom:0;">
+              <div class="card-title">Top Selling Items</div>
+              <div class="card-sub">Ranked by unit volume & revenue</div>
+              <div>${topItemsRows}</div>
+            </div>
+
+            <div class="card" style="margin-bottom:0;">
+              <div class="card-title">Category Revenue Split</div>
+              <div class="card-sub">Sales breakdown across food & beverages</div>
+              <div>${catRows}</div>
+
+              <div style="margin-top:20px; padding-top:16px; border-top:1px dashed #E8DFD5;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:#2C1810; margin-bottom:6px;">
+                  <span>Mode: Dine-in vs Takeaway</span>
+                  <span>Takeaway ${takeawayPct}% · Dine-in ${dineInPct}%</span>
+                </div>
+                <div style="display:flex; height:8px; border-radius:99px; overflow:hidden; background:#eee;">
+                  <div style="width:${takeawayPct}%; background:#5C3A21;"></div>
+                  <div style="width:${dineInPct}%; background:#D4AF37;"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:#8B7355; margin-top:4px;">
+                  <span>Takeaway: ₹${takeawayTotal.toLocaleString("en-IN")}</span>
+                  <span>Dine-in: ₹${dineInTotal.toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:28px; text-align:center; font-size:11px; color:#A4907C; border-top:1px solid #F0EBE4; padding-top:16px;">
+            Velvet Brew Point of Sale · Confidential Internal Report
+          </div>
+        </div>
+
+        <script>
+          ${autoPrint ? "window.onload = function() { window.print(); };" : ""}
+        </script>
+      </body>
+      </html>
+    `;
+
+    const reportWin = window.open("", "_blank");
+    if (reportWin) {
+      reportWin.document.open();
+      reportWin.document.write(printHtml);
+      reportWin.document.close();
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-[#FDFBF7] font-['Jost',sans-serif] overflow-y-auto vb-scrollbar">
       {/* Top Header */}
@@ -217,6 +411,15 @@ export default function ReportsView({ orders }: ReportsViewProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExportVisualReport(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D4AF37] hover:bg-[#c29e2e] text-[#2C1810] rounded-full text-xs font-bold transition-all shadow-sm cursor-pointer"
+              title="Download formatted visual report or save as PDF"
+            >
+              <Printer size={13} />
+              <span>Print / PDF Report</span>
+            </button>
+
             {activeTab === "daily" ? (
               <div className="flex items-center gap-2 bg-white border border-[#e8dfd5] hover:border-[#D4AF37] transition-all rounded-full px-3 py-1.5 shadow-sm text-sm font-semibold text-[#2C1810]">
                 <label htmlFor="report-date-picker" className="flex items-center gap-2 cursor-pointer select-none">
@@ -575,27 +778,77 @@ export default function ReportsView({ orders }: ReportsViewProps) {
                   <h3 className="font-bold text-[#2C1810]">Payment mix</h3>
                   <p className="text-xs text-[#8B7355]">Online vs Cash</p>
                 </div>
-                <button
-                  className="flex items-center gap-2 bg-[#2C1810] text-[#fdfbf7] px-3 py-2 rounded-xl text-xs font-semibold hover:bg-black transition-colors"
-                  onClick={() => {
-                    const csv = [
-                      "Metric,Value",
-                      `Net Sales,${netSales}`,
-                      `Orders,${numOrders}`,
-                      `Avg Order Value,${avgOrderValue}`,
-                      `Online Revenue,${onlineTotal}`,
-                      `Cash Revenue,${cashTotal}`,
-                    ].join("\n");
-                    const blob = new Blob([csv], { type: "text/csv" });
-                    const a = document.createElement("a");
-                    a.href = URL.createObjectURL(blob);
-                    const dateStamp = activeTab === "daily" ? selectedDate : now.toISOString().slice(0, 10);
-                    a.download = `velvetbrew_report_${activeTab}_${dateStamp}.csv`;
-                    a.click();
-                  }}
-                >
-                  <Download size={13} /> Export CSV
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="flex items-center gap-1.5 bg-[#D4AF37] text-[#2C1810] px-3 py-2 rounded-xl text-xs font-bold hover:bg-[#c29e2e] transition-colors cursor-pointer shadow-sm"
+                    onClick={() => handleExportVisualReport(false)}
+                    title="Open print-ready formatted visual dashboard report"
+                  >
+                    <Printer size={13} /> Visual Report
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 bg-[#2C1810] text-[#fdfbf7] px-3 py-2 rounded-xl text-xs font-semibold hover:bg-black transition-colors cursor-pointer"
+                    onClick={() => {
+                      const periodLabel = activeTab === "daily" ? (isSelectedToday ? `Today (${selectedDateLabel})` : selectedDateLabel) : tabLabel;
+                      const dateStamp = activeTab === "daily" ? selectedDate : now.toISOString().slice(0, 10);
+                      
+                      const lines = [
+                        `VELVET BREW - DETAILED OPERATIONS & SALES REPORT`,
+                        `Report Type,${activeTab.toUpperCase()}`,
+                        `Period / Date,${periodLabel}`,
+                        `Generated On,"${new Date().toLocaleString("en-IN")}"`,
+                        ``,
+                        `--- KEY PERFORMANCE INDICATORS (KPIs) ---`,
+                        `Metric,Value,Unit / Notes`,
+                        `Net Sales,${netSales},INR (Total Completed & Paid)`,
+                        `Total Orders Placed,${numOrders},Orders Count`,
+                        `Completed Orders,${numCompleted},Orders Count`,
+                        `Pending Orders,${filteredOrders.filter(o => (o.status || "").toLowerCase() === "pending").length},Orders Count`,
+                        `Rejected Orders,${filteredOrders.filter(o => (o.status || "").toLowerCase() === "rejected").length},Orders Count`,
+                        `Average Order Value (AOV),${avgOrderValue},INR per Completed Order`,
+                        ``,
+                        `--- PAYMENT BREAKDOWN ---`,
+                        `Payment Method,Revenue (INR),Percentage`,
+                        `Cash (COD),${cashTotal},${cashPct}%`,
+                        `Online (UPI / Card),${onlineTotal},${onlinePct}%`,
+                        `Total Payment Collected,${cashTotal + onlineTotal},100%`,
+                        ``,
+                        `--- ORDER MODE MIX ---`,
+                        `Mode,Revenue (INR),Share`,
+                        `Dine-in,${dineInTotal},${dineInPct}%`,
+                        `Takeaway,${takeawayTotal},${takeawayPct}%`,
+                        ``,
+                        `--- CATEGORY REVENUE BREAKDOWN ---`,
+                        `Category,Revenue (INR),Share of Net Sales`,
+                        `Hot Coffee,${categoryRevenue.hot || 0},${netSales > 0 ? Math.round(((categoryRevenue.hot || 0)/netSales)*100) : 0}%`,
+                        `Cold Brews,${categoryRevenue.cold || 0},${netSales > 0 ? Math.round(((categoryRevenue.cold || 0)/netSales)*100) : 0}%`,
+                        `Shakes,${categoryRevenue.shakes || 0},${netSales > 0 ? Math.round(((categoryRevenue.shakes || 0)/netSales)*100) : 0}%`,
+                        `Bites & Snacks,${categoryRevenue.bites || 0},${netSales > 0 ? Math.round(((categoryRevenue.bites || 0)/netSales)*100) : 0}%`,
+                        ``,
+                        `--- TOP SELLING ITEMS (BY UNITS SOLD) ---`,
+                        `Rank,Item Name,Units Sold,Total Revenue (INR)`,
+                        ...topItems.map((item, idx) => `"#${idx + 1}","${item.name.replace(/"/g, '""')}",${item.qty},${item.revenue}`),
+                        ``,
+                        `--- HOURLY SALES DISTRIBUTION (6 AM - 10 PM) ---`,
+                        `Hour,Sales Revenue (INR),Visual Bar`,
+                        ...HOURS.map((h) => {
+                          const val = hourlyRev[h] || 0;
+                          const bar = "#".repeat(Math.min(Math.round((val / (maxHourlyRev || 1)) * 20), 20));
+                          return `"${h}:00",${val},"${bar}"`;
+                        }),
+                      ];
+
+                      const csv = "\uFEFF" + lines.join("\r\n"); // \uFEFF UTF-8 BOM so Excel opens with proper encoding
+                      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                      const a = document.createElement("a");
+                      a.href = URL.createObjectURL(blob);
+                      a.download = `velvetbrew_detailed_report_${activeTab}_${dateStamp}.csv`;
+                      a.click();
+                    }}
+                  >
+                    <Download size={13} /> Detailed CSV
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4 mt-2">
