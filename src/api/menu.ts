@@ -106,3 +106,57 @@ export async function updateCategory(category: Partial<ApiCategory> & { id: numb
     const result = await response.json();
     return result.data;
 }
+
+export function getPublicImageUrl(url?: string | null): string {
+    if (!url) return "";
+    if (url.startsWith("s3://velvetbrew/")) {
+        return url.replace("s3://velvetbrew/", "https://velvetbrew.s3.ap-south-1.amazonaws.com/");
+    }
+    return url;
+}
+
+export async function uploadMenuImage(file: File): Promise<string> {
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${BASE_URL}/admin/menu/image`, {
+        method: "POST",
+        headers,
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || `Image upload failed (HTTP ${response.status})`);
+    }
+
+    const result = await response.json();
+    return result.data?.imageUrl || (typeof result.data === "string" ? result.data : "");
+}
+
+export async function replaceMenuItemImage(id: number, file: File): Promise<ApiMenuItem> {
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${BASE_URL}/admin/menu/${id}/image`, {
+        method: "POST",
+        headers,
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || `Failed to update image (HTTP ${response.status})`);
+    }
+
+    const result = await response.json();
+    return result.data;
+}

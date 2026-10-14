@@ -1,6 +1,18 @@
-import { useState, useEffect, useMemo } from "react";
-import { getMenu, getCategories, createMenuItem, updateMenuItem, createCategory, updateCategory, ApiMenuItem, ApiCategory } from "../../api/menu";
-import { Search, Plus, Edit2, Package, Tag, Check, X } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { 
+  getMenu, 
+  getCategories, 
+  createMenuItem, 
+  updateMenuItem, 
+  createCategory, 
+  updateCategory, 
+  uploadMenuImage, 
+  replaceMenuItemImage, 
+  getPublicImageUrl, 
+  ApiMenuItem, 
+  ApiCategory 
+} from "../../api/menu";
+import { Search, Plus, Edit2, Package, Tag, Check, X, Upload, Camera, Loader2, Trash2 } from "lucide-react";
 
 type Tab = "items" | "categories";
 
@@ -12,6 +24,7 @@ export default function MenuPricingView() {
   
   const [query, setQuery] = useState("");
   const [filterCat, setFilterCat] = useState<string>("all");
+  const [uploadingItemId, setUploadingItemId] = useState<number | null>(null);
 
   // Modals state
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -30,6 +43,28 @@ export default function MenuPricingView() {
       console.error("Failed to load menu data", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDirectImageUpload = async (itemId: number, file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size exceeds 5 MB. Please choose a smaller file.");
+      return;
+    }
+    const validTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(jpe?g|png|webp)$/i)) {
+      alert("Invalid format. Please select JPEG, PNG, or WebP.");
+      return;
+    }
+
+    setUploadingItemId(itemId);
+    try {
+      await replaceMenuItemImage(itemId, file);
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Failed to upload image");
+    } finally {
+      setUploadingItemId(null);
     }
   };
 
@@ -119,22 +154,51 @@ export default function MenuPricingView() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {filteredItems.map(item => (
                     <div key={item.id} className="bg-white border border-[#e8dfd5] rounded-3xl overflow-hidden flex flex-col shadow-sm">
-                      <div className="h-32 bg-[#2C1810] relative">
+                      <div className="h-32 bg-[#2C1810] relative group overflow-hidden">
                         {item.imageUrl ? (
                           <img 
-                            src={item.imageUrl.startsWith("s3://velvetbrew/") ? item.imageUrl.replace("s3://velvetbrew/", "https://velvetbrew.s3.ap-south-1.amazonaws.com/") : item.imageUrl} 
+                            src={getPublicImageUrl(item.imageUrl)} 
                             alt={item.name} 
-                            className="w-full h-full object-cover opacity-80"
+                            className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-3xl opacity-50">☕</div>
                         )}
                         {!item.available && (
-                          <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm">
+                          <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm z-10">
                             Unavailable
                           </div>
                         )}
+                        {/* Quick S3 Image Upload Overlay */}
+                        <label 
+                          title="Click to replace image directly"
+                          className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer text-white gap-1 z-10"
+                        >
+                          {uploadingItemId === item.id ? (
+                            <>
+                              <Loader2 size={20} className="animate-spin text-[#D4AF37]" />
+                              <span className="text-[11px] font-bold">Uploading to S3...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Camera size={20} className="text-[#D4AF37]" />
+                              <span className="text-[11px] font-bold">Change Image</span>
+                              <span className="text-[9px] text-[#e8dfd5]">Max 5 MB (S3)</span>
+                            </>
+                          )}
+                          <input 
+                            type="file" 
+                            accept="image/jpeg,image/png,image/webp" 
+                            className="hidden" 
+                            disabled={uploadingItemId === item.id}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleDirectImageUpload(item.id, f);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
                       </div>
                       <div className="p-4 flex-1 flex flex-col">
                         <div className="flex justify-between items-start mb-1">
@@ -261,11 +325,17 @@ function ItemModal({ isOpen, onClose, item, categories, onSave }: { isOpen: bool
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [showManualUrl, setShowManualUrl] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       if (item) {
         setFormData({ ...item });
+        setPreviewUrl(getPublicImageUrl(item.imageUrl));
+        setShowManualUrl(Boolean(item.imageUrl && !item.imageUrl.includes("amazonaws.com") && !item.imageUrl.startsWith("s3://")));
       } else {
         setFormData({
           categoryId: categories.length > 0 ? categories[0].id : 0,
@@ -279,12 +349,35 @@ function ItemModal({ isOpen, onClose, item, categories, onSave }: { isOpen: bool
           featured: false,
           displayOrder: 1,
         });
+        setPreviewUrl("");
+        setShowManualUrl(false);
       }
+      setSelectedFile(null);
       setError(null);
     }
   }, [isOpen, item, categories]);
 
   if (!isOpen) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size exceeds 5 MB. Please select a smaller image.");
+      return;
+    }
+
+    const validTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(jpe?g|png|webp)$/i)) {
+      setError("Invalid file format. Please upload JPEG, PNG, or WebP.");
+      return;
+    }
+
+    setError(null);
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,8 +387,23 @@ function ItemModal({ isOpen, onClose, item, categories, onSave }: { isOpen: bool
     setSubmitting(true);
     setError(null);
     try {
+      let finalImageUrl = formData.imageUrl || "";
+
+      // Upload image to S3 if a new file was chosen
+      if (selectedFile) {
+        if (item?.id) {
+          // Replaces image in S3, attaches to item, and removes old S3 image
+          const updatedWithImg = await replaceMenuItemImage(item.id, selectedFile);
+          finalImageUrl = updatedWithImg.imageUrl || finalImageUrl;
+        } else {
+          // Upload to S3 and get public URL for new item
+          finalImageUrl = await uploadMenuImage(selectedFile);
+        }
+      }
+
       const payload = {
         ...formData,
+        imageUrl: finalImageUrl,
         displayOrder: formData.displayOrder ?? item?.displayOrder ?? 0,
       };
       
@@ -403,15 +511,98 @@ function ItemModal({ isOpen, onClose, item, categories, onSave }: { isOpen: bool
               </div>
             </div>
 
+            {/* S3 Image Upload Area */}
             <div>
-              <label className="block text-[12px] font-bold uppercase tracking-wider text-[#8B7355] mb-1.5">Image URL</label>
+              <label className="block text-[12px] font-bold uppercase tracking-wider text-[#8B7355] mb-1.5 flex items-center justify-between">
+                <span>Item Photo</span>
+                <span className="text-[10px] text-[#8B7355]/80 font-normal">JPEG, PNG, WebP · Max 5 MB</span>
+              </label>
+
               <input 
-                type="text"
-                value={formData.imageUrl || ""} 
-                onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-                placeholder="https://..."
-                className="w-full bg-white border border-[#e8dfd5] px-4 py-2.5 rounded-xl text-[14px] text-[#2C1810] focus:outline-none focus:border-[#D4AF37]"
+                ref={fileInputRef}
+                type="file" 
+                accept="image/jpeg,image/png,image/webp" 
+                className="hidden" 
+                onChange={handleFileChange}
               />
+
+              {previewUrl ? (
+                <div className="relative border border-[#e8dfd5] rounded-2xl overflow-hidden bg-[#2C1810] flex items-center gap-4 p-3 shadow-sm">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/10">
+                    <img 
+                      src={previewUrl} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                      onError={() => setPreviewUrl("")}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold text-white truncate">
+                      {selectedFile ? selectedFile.name : (item?.name || "Current item photo")}
+                    </p>
+                    <p className="text-[11px] text-[#e8dfd5]/70 mt-0.5">
+                      {selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB · Ready to upload to S3` : "Stored on Velvet Brew S3"}
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3 py-1 bg-[#D4AF37] hover:bg-[#c4a130] text-[#2C1810] text-[11px] font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Camera size={13} /> Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setPreviewUrl("");
+                          setFormData({ ...formData, imageUrl: "" });
+                        }}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-[#e8dfd5] text-[11px] font-medium rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 size={12} /> Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-[#e8dfd5] hover:border-[#D4AF37] rounded-2xl p-5 text-center cursor-pointer transition-all bg-[#fdfbf7] hover:bg-white flex flex-col items-center justify-center gap-2 group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#f4ede4] group-hover:bg-[#D4AF37]/20 flex items-center justify-center text-[#8B7355] group-hover:text-[#2C1810] transition-colors">
+                    <Upload size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[13px] font-bold text-[#2C1810] block">Click to upload photo</span>
+                    <span className="text-[11px] text-[#8B7355]">Uploads directly to Velvet Brew S3 (JPEG, PNG, WebP)</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Optional manual URL toggle */}
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowManualUrl(!showManualUrl)}
+                  className="text-[11px] text-[#8B7355] hover:text-[#2C1810] underline cursor-pointer"
+                >
+                  {showManualUrl ? "Hide manual URL input" : "Or enter image URL manually"}
+                </button>
+              </div>
+
+              {showManualUrl && (
+                <input 
+                  type="text"
+                  value={formData.imageUrl || ""} 
+                  onChange={(e) => {
+                    setFormData({...formData, imageUrl: e.target.value});
+                    setPreviewUrl(e.target.value);
+                  }}
+                  placeholder="https://example.com/image.jpg"
+                  className="mt-1.5 w-full bg-white border border-[#e8dfd5] px-3.5 py-2 rounded-xl text-[13px] text-[#2C1810] focus:outline-none focus:border-[#D4AF37]"
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
