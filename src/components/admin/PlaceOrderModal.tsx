@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { X, User, Phone, Mail, Plus, Minus, FileText, Check } from "lucide-react";
+import { X, User, Phone, Mail, Plus, Minus, FileText, Check, Coffee, Snowflake, CupSoda, UtensilsCrossed, Search } from "lucide-react";
 import { COLORS } from "../../data/colors";
 import { rupee } from "../../utils/currency";
 import { CATEGORIES, MENU, PROMO_HOT_PRICE } from "../../data/menu";
@@ -16,12 +16,21 @@ interface PlaceOrderModalProps {
   initialOrder?: Order | null;
 }
 
+const getCategoryIcon = (name: string) => {
+  const norm = (name || "").toLowerCase();
+  if (norm.includes("hot") || norm.includes("coffee") || norm.includes("chai") || norm.includes("tea")) return Coffee;
+  if (norm.includes("cold") || norm.includes("ice") || norm.includes("frappe")) return Snowflake;
+  if (norm.includes("shake") || norm.includes("drink") || norm.includes("beverage") || norm.includes("can") || norm.includes("soda")) return CupSoda;
+  return UtensilsCrossed;
+};
+
 export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder }: PlaceOrderModalProps) {
   // Menu loading states
   const [categories, setCategories] = useState<Category[]>(CATEGORIES);
   const [menu, setMenu] = useState<Record<CategoryId, MenuItem[]>>(MENU);
   const [activeCategory, setActiveCategory] = useState<CategoryId>("hot");
   const [loadingMenu, setLoadingMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Form states
   const [details, setDetails] = useState<Details>({
@@ -49,29 +58,20 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
       try {
         setLoadingMenu(true);
         const [apiCategories, apiItems] = await Promise.all([
-          getCategories(),
-          getMenu(),
+          getCategories().catch(() => []),
+          getMenu().catch(() => []),
         ]);
         if (!active) return;
 
-        // Map categories
-        const mappedCategories: Category[] = apiCategories.map((cat) => {
-          let key: CategoryId = "hot";
-          const norm = (cat.name || "").toLowerCase();
-          if (cat.id === 1 || norm.includes("hot")) key = "hot";
-          else if (cat.id === 2 || norm.includes("cold")) key = "cold";
-          else if (cat.id === 3 || norm.includes("shake")) key = "shakes";
-          else if (cat.id === 4 || norm.includes("bite")) key = "bites";
-          return {
-            id: key,
-            label: cat.name,
-            icon: CATEGORIES.find(c => c.id === key)?.icon || CATEGORIES[0].icon,
-          };
-        });
+        // Map categories dynamically
+        const mappedCategories: Category[] = (apiCategories || []).map((cat) => ({
+          id: String(cat.id),
+          label: cat.name,
+          icon: getCategoryIcon(cat.name),
+        }));
 
-        // Unique categories
         const uniqueCategories: Category[] = [];
-        const seen = new Set<CategoryId>();
+        const seen = new Set<string>();
         mappedCategories.forEach((cat) => {
           if (!seen.has(cat.id)) {
             seen.add(cat.id);
@@ -79,26 +79,42 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
           }
         });
 
-        // Group items
-        const newMenu: Record<CategoryId, MenuItem[]> = {
-          hot: [],
-          cold: [],
-          shakes: [],
-          bites: [],
-        };
-        apiItems.forEach((item) => {
-          let category: CategoryId = "hot";
-          if (item.categoryId === 1) category = "hot";
-          else if (item.categoryId === 2) category = "cold";
-          else if (item.categoryId === 3) category = "shakes";
-          else if (item.categoryId === 4) category = "bites";
+        // Also ensure any category present in items is represented
+        (apiItems || []).forEach((item) => {
+          const catId = String(item.categoryId || "hot");
+          if (!seen.has(catId)) {
+            seen.add(catId);
+            uniqueCategories.push({
+              id: catId,
+              label: item.categoryName || `Category ${catId}`,
+              icon: getCategoryIcon(item.categoryName || ""),
+            });
+          }
+        });
+
+        // Group items dynamically
+        const newMenu: Record<CategoryId, MenuItem[]> = {};
+        uniqueCategories.forEach((cat) => {
+          newMenu[cat.id] = [];
+        });
+
+        (apiItems || []).forEach((item) => {
+          const category = String(item.categoryId || (uniqueCategories[0]?.id ?? "hot"));
+          if (!newMenu[category]) {
+            newMenu[category] = [];
+          }
+
+          let parsedImageUrl = item.imageUrl;
+          if (parsedImageUrl && parsedImageUrl.startsWith('s3://velvetbrew/')) {
+            parsedImageUrl = parsedImageUrl.replace('s3://velvetbrew/', 'https://velvetbrew.s3.ap-south-1.amazonaws.com/');
+          }
 
           newMenu[category].push({
             id: String(item.id),
             name: item.name,
             price: item.price,
             description: item.description,
-            imageUrl: item.imageUrl,
+            imageUrl: parsedImageUrl,
             veg: item.veg,
             available: item.available,
             featured: item.featured,
@@ -106,8 +122,13 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
           });
         });
 
-        setCategories(uniqueCategories.length > 0 ? uniqueCategories : CATEGORIES);
+        const finalCategories = uniqueCategories.length > 0 ? uniqueCategories : CATEGORIES;
+        setCategories(finalCategories);
         setMenu(newMenu);
+        setActiveCategory((prev) => {
+          if (finalCategories.some(c => c.id === prev)) return prev;
+          return finalCategories[0]?.id || "hot";
+        });
       } catch (err) {
         console.error("PlaceOrderModal error loading menu:", err);
       } finally {
@@ -123,7 +144,8 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
 
   // Initialize form if editing an existing order
   useEffect(() => {
-    if (open && initialOrder && Object.keys(menu.hot).length > 0) {
+    const hasItems = Object.values(menu).some(items => items.length > 0);
+    if (open && initialOrder && hasItems) {
       setDetails({
         name: initialOrder.customerName || "",
         phone: initialOrder.phone || "",
@@ -134,10 +156,6 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
       setPayment(initialOrder.paymentMethod || "cod");
       
       setAppliedOfferCode(initialOrder.offerCode || null);
-      
-      // Calculate any previous offer discount. It's approximately initialOrder.savings - (menu item discounts)
-      // But since we will re-validate the offer against the backend, we can just leave it as 0 initially
-      // and it will update when we validate.
       setOfferDiscount(0);
 
       const newCart: Record<string, any> = {};
@@ -147,7 +165,7 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
         let foundCat: CategoryId | null = null;
         
         for (const [catId, items] of Object.entries(menu)) {
-          const match = items.find(i => String(i.id) === String(line.id));
+          const match = items.find(i => String(i.id) === String(line.id) || i.name.trim().toLowerCase() === line.name.trim().toLowerCase());
           if (match) {
             foundItem = match;
             foundCat = catId as CategoryId;
@@ -165,7 +183,7 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
           // Fallback if item is no longer in menu
           newCart[line.id] = {
             item: { id: line.id, name: line.name, price: line.price },
-            category: "hot",
+            category: line.category || categories[0]?.id || "hot",
             qty: line.qty
           };
         }
@@ -176,6 +194,7 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
       setCart({});
       setDetails({ name: "", phone: "", email: "", mode: "Takeaway", note: "" });
       setPayment("upi");
+      setSearchQuery("");
     }
   }, [open, initialOrder, menu]);
 
@@ -184,7 +203,9 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
     if (item.offerPrice !== undefined && item.offerPrice !== null) {
       return item.offerPrice;
     }
-    if (category === "hot") {
+    const cat = categories.find(c => c.id === category);
+    const isHot = category === "hot" || category === "1" || (cat?.label.toLowerCase().includes("hot") ?? false);
+    if (isHot) {
       return Math.min(item.price, PROMO_HOT_PRICE);
     }
     return item.price;
@@ -331,6 +352,21 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
     }
   };
 
+  const getItemCategory = (item: MenuItem): CategoryId => {
+    for (const [catId, items] of Object.entries(menu)) {
+      if (items.some((i) => i.id === item.id)) {
+        return catId as CategoryId;
+      }
+    }
+    return activeCategory;
+  };
+
+  const currentCategoryItems = menu[activeCategory] || [];
+  const q = searchQuery.trim().toLowerCase();
+  const displayedItems = q
+    ? Object.values(menu).flat().filter((item) => item.name.toLowerCase().includes(q))
+    : currentCategoryItems;
+
   if (!open) return null;
 
   return (
@@ -354,39 +390,61 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
             {loadingMenu && <span className="text-xs" style={{ color: COLORS.gold }}>Loading menu...</span>}
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex gap-2 p-3 overflow-x-auto shrink-0 vb-scrollbar" style={{ background: "rgba(23,15,10,0.4)" }}>
-            {categories.map((cat) => {
-              const active = activeCategory === cat.id;
-              const Icon = cat.icon;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all duration-200 cursor-pointer"
-                  style={
-                    active
-                      ? { background: COLORS.gold, color: COLORS.espresso }
-                      : { border: `1px solid ${COLORS.line}`, color: COLORS.muted }
-                  }
-                >
-                  <Icon size={13} />
-                  {cat.label}
-                </button>
-              );
-            })}
+          {/* Search bar & Category Tabs */}
+          <div className="p-3 space-y-2.5 shrink-0" style={{ background: "rgba(23,15,10,0.4)", borderBottom: `1px solid ${COLORS.line}` }}>
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5" style={{ color: COLORS.muted }} />
+              <input
+                type="text"
+                placeholder="Search menu items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs rounded-xl py-2 pl-9 pr-3 border"
+                style={{ background: COLORS.umber, color: COLORS.cream, borderColor: COLORS.line, outline: "none" }}
+              />
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto shrink-0 vb-scrollbar pb-0.5">
+              {categories.map((cat) => {
+                const isSelected = !searchQuery.trim() && activeCategory === cat.id;
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      setSearchQuery("");
+                      setActiveCategory(cat.id);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap"
+                    style={
+                      isSelected
+                        ? { background: COLORS.gold, color: COLORS.espresso, fontWeight: "bold" }
+                        : { border: `1px solid ${COLORS.line}`, color: COLORS.muted }
+                    }
+                  >
+                    <Icon size={13} />
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Items Grid */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2.5 vb-scrollbar">
-            {menu[activeCategory]?.length === 0 ? (
-              <p className="text-xs text-center py-8" style={{ color: COLORS.muted }}>No items in this category.</p>
+            {displayedItems.length === 0 ? (
+              <p className="text-xs text-center py-8" style={{ color: COLORS.muted }}>
+                {searchQuery.trim() ? "No matching items found." : "No items in this category."}
+              </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {menu[activeCategory]?.map((item) => {
+                {displayedItems.map((item) => {
+                  const itemCat = getItemCategory(item);
                   const qty = cart[item.id]?.qty || 0;
-                  const finalPrice = priceFor(activeCategory, item);
-                  const isPromo = activeCategory === "hot" && item.price > finalPrice;
+                  const finalPrice = priceFor(itemCat, item);
+                  const cat = categories.find(c => c.id === itemCat);
+                  const isHot = itemCat === "hot" || itemCat === "1" || (cat?.label.toLowerCase().includes("hot") ?? false);
+                  const isPromo = (isHot && item.price > finalPrice) || (item.offerPrice !== undefined && item.offerPrice !== null && item.price > item.offerPrice);
                   
                   return (
                     <div 
@@ -422,17 +480,17 @@ export default function PlaceOrderModal({ open, onClose, onSuccess, initialOrder
                         
                         {qty > 0 ? (
                           <div className="flex items-center gap-2 rounded-full px-2 py-0.5" style={{ background: COLORS.espresso, border: `1px solid ${COLORS.line}` }}>
-                            <button onClick={() => updateQty(item, activeCategory, -1)} className="p-1 hover:text-white cursor-pointer" style={{ color: COLORS.gold }}>
+                            <button onClick={() => updateQty(item, itemCat, -1)} className="p-1 hover:text-white cursor-pointer" style={{ color: COLORS.gold }}>
                               <Minus size={12} />
                             </button>
                             <span className="text-xs font-bold w-4 text-center" style={{ color: COLORS.cream }}>{qty}</span>
-                            <button onClick={() => updateQty(item, activeCategory, 1)} className="p-1 hover:text-white cursor-pointer" style={{ color: COLORS.gold }}>
+                            <button onClick={() => updateQty(item, itemCat, 1)} className="p-1 hover:text-white cursor-pointer" style={{ color: COLORS.gold }}>
                               <Plus size={12} />
                             </button>
                           </div>
                         ) : (
                           <button
-                            onClick={() => updateQty(item, activeCategory, 1)}
+                            onClick={() => updateQty(item, itemCat, 1)}
                             className="text-xs font-semibold px-3 py-1 rounded-full hover:opacity-90 cursor-pointer"
                             style={{ background: COLORS.gold, color: COLORS.espresso }}
                           >

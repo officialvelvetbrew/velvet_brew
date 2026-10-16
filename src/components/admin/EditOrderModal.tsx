@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { X, Plus, Minus, Search, ShoppingBag } from "lucide-react";
+import { X, Plus, Minus, Search, ShoppingBag, Coffee, Snowflake, CupSoda, UtensilsCrossed } from "lucide-react";
 import { COLORS } from "../../data/colors";
 import { rupee } from "../../utils/currency";
 import { CATEGORIES, MENU } from "../../data/menu";
@@ -13,6 +13,14 @@ interface EditOrderModalProps {
   onClose: () => void;
   onSuccess: (updatedOrder: Order) => void;
 }
+
+const getCategoryIcon = (name: string) => {
+  const norm = (name || "").toLowerCase();
+  if (norm.includes("hot") || norm.includes("coffee") || norm.includes("chai") || norm.includes("tea")) return Coffee;
+  if (norm.includes("cold") || norm.includes("ice") || norm.includes("frappe")) return Snowflake;
+  if (norm.includes("shake") || norm.includes("drink") || norm.includes("beverage") || norm.includes("can") || norm.includes("soda")) return CupSoda;
+  return UtensilsCrossed;
+};
 
 export default function EditOrderModal({ order, open, onClose, onSuccess }: EditOrderModalProps) {
   const [categories, setCategories] = useState<Category[]>(CATEGORIES);
@@ -44,50 +52,66 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
         ]);
         if (!active) return;
 
-        if (apiCategories.length > 0) {
-          const mappedCategories: Category[] = apiCategories.map((cat: any) => {
-            let key: CategoryId = "hot";
-            const norm = (cat.name || "").toLowerCase();
-            if (cat.id === 1 || norm.includes("hot")) key = "hot";
-            else if (cat.id === 2 || norm.includes("cold")) key = "cold";
-            else if (cat.id === 3 || norm.includes("shake")) key = "shakes";
-            else if (cat.id === 4 || norm.includes("bite")) key = "bites";
-            return {
-              id: key,
-              label: cat.name,
-              icon: CATEGORIES.find(c => c.id === key)?.icon || CATEGORIES[0].icon,
-            };
-          });
+        // Map categories dynamically
+        const mappedCategories: Category[] = (apiCategories || []).map((cat: any) => ({
+          id: String(cat.id),
+          label: cat.name,
+          icon: getCategoryIcon(cat.name),
+        }));
 
-          const uniqueCategories: Category[] = [];
-          const seen = new Set<CategoryId>();
-          mappedCategories.forEach((cat) => {
-            if (!seen.has(cat.id)) {
-              seen.add(cat.id);
-              uniqueCategories.push(cat);
-            }
-          });
-          setCategories(uniqueCategories.length > 0 ? uniqueCategories : CATEGORIES);
-        }
+        const uniqueCategories: Category[] = [];
+        const seen = new Set<string>();
+        mappedCategories.forEach((cat) => {
+          if (!seen.has(cat.id)) {
+            seen.add(cat.id);
+            uniqueCategories.push(cat);
+          }
+        });
 
-        if (apiItems.length > 0) {
-          const newMenu: Record<CategoryId, MenuItem[]> = { hot: [], cold: [], shakes: [], bites: [] };
+        (apiItems || []).forEach((item: any) => {
+          const catId = String(item.categoryId || "hot");
+          if (!seen.has(catId)) {
+            seen.add(catId);
+            uniqueCategories.push({
+              id: catId,
+              label: item.categoryName || `Category ${catId}`,
+              icon: getCategoryIcon(item.categoryName || ""),
+            });
+          }
+        });
+
+        const finalCategories = uniqueCategories.length > 0 ? uniqueCategories : CATEGORIES;
+        setCategories(finalCategories);
+        setActiveCategory((prev) => {
+          if (finalCategories.some(c => c.id === prev)) return prev;
+          return finalCategories[0]?.id || "hot";
+        });
+
+        if (apiItems && apiItems.length > 0) {
+          const newMenu: Record<CategoryId, MenuItem[]> = {};
+          finalCategories.forEach((c) => {
+            newMenu[c.id] = [];
+          });
           const nameToApiMap = new Map<string, any>();
 
           apiItems.forEach((item: any) => {
             nameToApiMap.set(item.name.trim().toLowerCase(), item);
-            let category: CategoryId = "hot";
-            if (item.categoryId === 1) category = "hot";
-            else if (item.categoryId === 2) category = "cold";
-            else if (item.categoryId === 3) category = "shakes";
-            else if (item.categoryId === 4) category = "bites";
+            const category = String(item.categoryId || (finalCategories[0]?.id ?? "hot"));
+            if (!newMenu[category]) {
+              newMenu[category] = [];
+            }
+
+            let parsedImageUrl = item.imageUrl;
+            if (parsedImageUrl && parsedImageUrl.startsWith('s3://velvetbrew/')) {
+              parsedImageUrl = parsedImageUrl.replace('s3://velvetbrew/', 'https://velvetbrew.s3.ap-south-1.amazonaws.com/');
+            }
 
             newMenu[category].push({
               id: String(item.id),
               name: item.name,
               price: item.price,
               description: item.description,
-              imageUrl: item.imageUrl,
+              imageUrl: parsedImageUrl,
               veg: item.veg,
               available: item.available,
               featured: item.featured,
@@ -105,6 +129,7 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
               
               const realId = match ? String(match.id) : line.item.id;
               const realPrice = match ? match.price : line.item.price;
+              const realCategory = match ? String(match.categoryId) : line.category;
 
               updatedCart[realId] = {
                 item: {
@@ -112,7 +137,7 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
                   id: realId,
                   price: realPrice,
                 },
-                category: line.category,
+                category: realCategory,
                 qty: line.qty,
               };
             });
@@ -137,7 +162,7 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
           name: it.name,
           price: it.price,
         },
-        category: it.category || "hot",
+        category: it.category || "1",
         qty: it.qty,
       };
     });
@@ -217,12 +242,22 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
     }
   };
 
+  const getItemCategory = (item: MenuItem): CategoryId => {
+    for (const [catId, items] of Object.entries(menu)) {
+      if (items.some((i) => i.id === item.id)) {
+        return catId as CategoryId;
+      }
+    }
+    return activeCategory;
+  };
+
   if (!open || !order) return null;
 
   const currentCategoryItems = menu[activeCategory] || [];
-  const filteredCategoryItems = currentCategoryItems.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const q = searchQuery.trim().toLowerCase();
+  const displayedItems = q
+    ? Object.values(menu).flat().filter((item) => item.name.toLowerCase().includes(q))
+    : currentCategoryItems;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -264,15 +299,18 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
 
             <div className="flex gap-2 overflow-x-auto vb-scrollbar pb-1">
               {categories.map((cat) => {
-                const active = activeCategory === cat.id;
+                const isSelected = !searchQuery.trim() && activeCategory === cat.id;
                 const Icon = cat.icon;
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all shrink-0 cursor-pointer"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setActiveCategory(cat.id);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all shrink-0 cursor-pointer whitespace-nowrap"
                     style={
-                      active
+                      isSelected
                         ? { background: COLORS.gold, color: COLORS.espresso, fontWeight: "bold" }
                         : { border: `1px solid ${COLORS.line}`, color: COLORS.muted }
                     }
@@ -287,11 +325,14 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
 
           {/* Menu Items Grid */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2 vb-scrollbar">
-            {filteredCategoryItems.length === 0 ? (
-              <p className="text-xs text-center py-8" style={{ color: COLORS.muted }}>No items found.</p>
+            {displayedItems.length === 0 ? (
+              <p className="text-xs text-center py-8" style={{ color: COLORS.muted }}>
+                {searchQuery.trim() ? "No matching items found." : "No items found."}
+              </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {filteredCategoryItems.map((item) => {
+                {displayedItems.map((item) => {
+                  const itemCat = getItemCategory(item);
                   const qty = cart[item.id]?.qty || 0;
                   return (
                     <div
@@ -309,17 +350,17 @@ export default function EditOrderModal({ order, open, onClose, onSuccess }: Edit
                       <div className="flex items-center justify-end mt-2.5">
                         {qty > 0 ? (
                           <div className="flex items-center gap-2 rounded-full px-2 py-0.5" style={{ background: COLORS.espresso, border: `1px solid ${COLORS.line}` }}>
-                            <button onClick={() => updateQty(item, activeCategory, -1)} className="p-1 cursor-pointer hover:text-white" style={{ color: COLORS.gold }}>
+                            <button onClick={() => updateQty(item, itemCat, -1)} className="p-1 cursor-pointer hover:text-white" style={{ color: COLORS.gold }}>
                               <Minus size={11} />
                             </button>
                             <span className="text-xs font-bold w-4 text-center" style={{ color: COLORS.cream }}>{qty}</span>
-                            <button onClick={() => updateQty(item, activeCategory, 1)} className="p-1 cursor-pointer hover:text-white" style={{ color: COLORS.gold }}>
+                            <button onClick={() => updateQty(item, itemCat, 1)} className="p-1 cursor-pointer hover:text-white" style={{ color: COLORS.gold }}>
                               <Plus size={11} />
                             </button>
                           </div>
                         ) : (
                           <button
-                            onClick={() => updateQty(item, activeCategory, 1)}
+                            onClick={() => updateQty(item, itemCat, 1)}
                             className="text-[11px] font-bold px-2.5 py-1 rounded-full cursor-pointer hover:opacity-90"
                             style={{ background: COLORS.gold, color: COLORS.espresso }}
                           >
