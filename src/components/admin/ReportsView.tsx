@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Bell, Store, TrendingUp, ShoppingBag, Star, Download, Printer } from "lucide-react";
+import { Bell, Store, TrendingUp, ShoppingBag, Star, Download, Printer, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import type { Order } from "../../types";
 import { rupee } from "../../utils/currency";
 
@@ -29,10 +29,18 @@ function parseOrderDate(raw: any): Date {
   return isNaN(d.getTime()) ? new Date(0) : d;
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
 // ── Component ───────────────────────────────────────────────────────────────
 
 export default function ReportsView({ orders }: ReportsViewProps) {
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "monthly" | "yearly">("daily");
+  const now = useMemo(() => new Date(), []);
+
+  // ── Daily state ──
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
     const year = d.getFullYear();
@@ -41,12 +49,11 @@ export default function ReportsView({ orders }: ReportsViewProps) {
     return `${year}-${month}-${day}`;
   });
 
-  const now = new Date();
   const selectedDateObj = useMemo(() => {
     if (!selectedDate) return now;
     const [y, m, d] = selectedDate.split("-").map(Number);
     return new Date(y, m - 1, d);
-  }, [selectedDate]);
+  }, [selectedDate, now]);
 
   const isSelectedToday = isSameDay(selectedDateObj, now);
 
@@ -56,24 +63,132 @@ export default function ReportsView({ orders }: ReportsViewProps) {
     year: "numeric",
   });
 
+  // ── Weekly state ──
+  const [selectedWeekDate, setSelectedWeekDate] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
+
+  const selectedWeekRange = useMemo(() => {
+    const d = new Date(selectedWeekDate + "T00:00:00");
+    const validD = isNaN(d.getTime()) ? new Date(now) : d;
+    const day = validD.getDay(); // 0 = Sun, 1 = Mon ...
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const start = new Date(validD.getFullYear(), validD.getMonth(), validD.getDate() + diffToMonday, 0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }, [selectedWeekDate, now]);
+
+  const thisWeekRange = useMemo(() => {
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday, 0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }, [now]);
+
+  const isThisWeek = useMemo(() => {
+    return selectedWeekRange.start.getTime() === thisWeekRange.start.getTime();
+  }, [selectedWeekRange, thisWeekRange]);
+
+  const weekLabel = useMemo(() => {
+    const startStr = selectedWeekRange.start.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+    const endStr = selectedWeekRange.end.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    return `${startStr} – ${endStr}`;
+  }, [selectedWeekRange]);
+
+  const handlePrevWeek = () => {
+    const cur = new Date(selectedWeekDate + "T00:00:00");
+    cur.setDate(cur.getDate() - 7);
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, "0");
+    const d = String(cur.getDate()).padStart(2, "0");
+    setSelectedWeekDate(`${y}-${m}-${d}`);
+  };
+
+  const handleNextWeek = () => {
+    const cur = new Date(selectedWeekDate + "T00:00:00");
+    cur.setDate(cur.getDate() + 7);
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, "0");
+    const d = String(cur.getDate()).padStart(2, "0");
+    setSelectedWeekDate(`${y}-${m}-${d}`);
+  };
+
+  const handleResetThisWeek = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    setSelectedWeekDate(`${y}-${m}-${day}`);
+  };
+
+  // ── Monthly state ──
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => now.getMonth());
+  const [selectedMonthYear, setSelectedMonthYear] = useState<number>(() => now.getFullYear());
+
+  const isThisMonth = selectedMonth === now.getMonth() && selectedMonthYear === now.getFullYear();
+  const monthLabel = `${MONTH_NAMES[selectedMonth]} ${selectedMonthYear}`;
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedMonthYear((y) => y - 1);
+    } else {
+      setSelectedMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedMonthYear((y) => y + 1);
+    } else {
+      setSelectedMonth((m) => m + 1);
+    }
+  };
+
+  const handleResetThisMonth = () => {
+    setSelectedMonth(now.getMonth());
+    setSelectedMonthYear(now.getFullYear());
+  };
+
+  // ── Yearly state ──
+  const [selectedYear, setSelectedYear] = useState<number>(() => now.getFullYear());
+  const isThisYear = selectedYear === now.getFullYear();
+  const yearLabel = String(selectedYear);
+
+  const YEAR_OPTIONS = useMemo(() => {
+    const curY = now.getFullYear();
+    const list: number[] = [];
+    for (let y = curY - 5; y <= curY + 2; y++) {
+      list.push(y);
+    }
+    return list;
+  }, [now]);
+
   // ── Filter orders by time window ─────────────────────────────────────────
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       const d = parseOrderDate(o.createdAt);
       if (activeTab === "daily") return isSameDay(d, selectedDateObj);
       if (activeTab === "weekly") {
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-        return d >= startOfWeek;
+        return d >= selectedWeekRange.start && d <= selectedWeekRange.end;
       }
       if (activeTab === "monthly") {
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        return d.getFullYear() === selectedMonthYear && d.getMonth() === selectedMonth;
       }
       // yearly
-      return d.getFullYear() === now.getFullYear();
+      return d.getFullYear() === selectedYear;
     });
-  }, [orders, activeTab, selectedDateObj]);
+  }, [orders, activeTab, selectedDateObj, selectedWeekRange, selectedMonth, selectedMonthYear, selectedYear]);
 
   // ── Filter completed orders for revenue calculations ──────────────────────
   const completedOrders = useMemo(() => {
@@ -166,9 +281,9 @@ export default function ReportsView({ orders }: ReportsViewProps) {
 
   // ── Tab label ─────────────────────────────────────────────────────────────
   const tabLabel = activeTab === "daily" ? (isSelectedToday ? `Today — ${selectedDateLabel}` : selectedDateLabel) :
-    activeTab === "weekly" ? "This Week" :
-    activeTab === "monthly" ? now.toLocaleDateString("en-IN", { month: "long", year: "numeric" }) :
-    String(now.getFullYear());
+    activeTab === "weekly" ? (isThisWeek ? `This Week (${weekLabel})` : weekLabel) :
+    activeTab === "monthly" ? monthLabel :
+    yearLabel;
 
   const isEmpty = filteredOrders.length === 0;
 
@@ -420,21 +535,32 @@ export default function ReportsView({ orders }: ReportsViewProps) {
               <span>Print / PDF Report</span>
             </button>
 
-            {activeTab === "daily" ? (
-              <div className="flex items-center gap-2 bg-white border border-[#e8dfd5] hover:border-[#D4AF37] transition-all rounded-full px-3 py-1.5 shadow-sm text-sm font-semibold text-[#2C1810]">
-                <label htmlFor="report-date-picker" className="flex items-center gap-2 cursor-pointer select-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#8B7355]">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  <span className="font-medium text-[#2C1810]">
+            {/* Daily Picker */}
+            {activeTab === "daily" && (
+              <div className="flex items-center gap-1.5 bg-white border border-[#e8dfd5] hover:border-[#D4AF37] transition-all rounded-full px-2.5 py-1.5 shadow-sm text-sm font-semibold text-[#2C1810]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prevD = new Date(selectedDateObj);
+                    prevD.setDate(prevD.getDate() - 1);
+                    const y = prevD.getFullYear();
+                    const m = String(prevD.getMonth() + 1).padStart(2, "0");
+                    const day = String(prevD.getDate()).padStart(2, "0");
+                    setSelectedDate(`${y}-${m}-${day}`);
+                  }}
+                  className="p-1 hover:bg-[#FDFBF7] rounded-full text-[#8B7355] hover:text-[#2C1810] transition-colors cursor-pointer"
+                  title="Previous Day"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                <label htmlFor="report-date-picker" className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <Calendar size={14} className="text-[#8B7355]" />
+                  <span className="font-semibold text-xs sm:text-sm text-[#2C1810]">
                     {isSelectedToday ? `Today (${selectedDateLabel})` : selectedDateLabel}
                   </span>
                 </label>
 
-                {/* Native HTML Date Picker styled neatly */}
                 <input
                   id="report-date-picker"
                   type="date"
@@ -444,44 +570,199 @@ export default function ReportsView({ orders }: ReportsViewProps) {
                       setSelectedDate(e.target.value);
                     }
                   }}
-                  className="bg-transparent text-xs text-[#2C1810] font-medium border-l border-[#e8dfd5] pl-2 outline-none cursor-pointer"
+                  className="bg-transparent text-xs text-[#2C1810] font-medium border-l border-[#e8dfd5] pl-1.5 outline-none cursor-pointer w-7"
                   title="Select Date"
                 />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextD = new Date(selectedDateObj);
+                    nextD.setDate(nextD.getDate() + 1);
+                    const y = nextD.getFullYear();
+                    const m = String(nextD.getMonth() + 1).padStart(2, "0");
+                    const day = String(nextD.getDate()).padStart(2, "0");
+                    setSelectedDate(`${y}-${m}-${day}`);
+                  }}
+                  className="p-1 hover:bg-[#FDFBF7] rounded-full text-[#8B7355] hover:text-[#2C1810] transition-colors cursor-pointer"
+                  title="Next Day"
+                >
+                  <ChevronRight size={14} />
+                </button>
 
                 {isSelectedToday ? (
                   <span className="bg-[#FDFBF7] border border-[#D4AF37] text-[#8B7355] text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">
                     {now.getHours() < 22 ? "IN PROGRESS" : "DONE"}
                   </span>
                 ) : (
-                  <div className="flex items-center gap-1.5 ml-1">
-                    <span className="bg-gray-100 border border-gray-300 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-bold">
-                      CLOSED
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const d = new Date();
-                        const year = d.getFullYear();
-                        const month = String(d.getMonth() + 1).padStart(2, "0");
-                        const day = String(d.getDate()).padStart(2, "0");
-                        setSelectedDate(`${year}-${month}-${day}`);
-                      }}
-                      className="text-[11px] text-[#8B7355] hover:text-[#2C1810] underline font-medium cursor-pointer"
-                    >
-                      Reset Today
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      const year = d.getFullYear();
+                      const month = String(d.getMonth() + 1).padStart(2, "0");
+                      const day = String(d.getDate()).padStart(2, "0");
+                      setSelectedDate(`${year}-${month}-${day}`);
+                    }}
+                    className="text-[11px] text-[#8B7355] hover:text-[#2C1810] underline font-medium cursor-pointer ml-1 whitespace-nowrap"
+                  >
+                    Reset Today
+                  </button>
                 )}
               </div>
-            ) : (
-              <div className="flex items-center gap-2 bg-white border border-[#e8dfd5] rounded-full px-4 py-2 text-sm font-semibold text-[#2C1810]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#8B7355]">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                {tabLabel}
+            )}
+
+            {/* Weekly Picker */}
+            {activeTab === "weekly" && (
+              <div className="flex items-center gap-1.5 bg-white border border-[#e8dfd5] hover:border-[#D4AF37] transition-all rounded-full px-2.5 py-1.5 shadow-sm text-sm font-semibold text-[#2C1810]">
+                <button
+                  type="button"
+                  onClick={handlePrevWeek}
+                  className="p-1 hover:bg-[#FDFBF7] rounded-full text-[#8B7355] hover:text-[#2C1810] transition-colors cursor-pointer"
+                  title="Previous Week"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                <label htmlFor="report-week-picker" className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <Calendar size={14} className="text-[#8B7355]" />
+                  <span className="font-semibold text-xs sm:text-sm text-[#2C1810]">
+                    {isThisWeek ? `This Week (${weekLabel})` : weekLabel}
+                  </span>
+                </label>
+
+                <input
+                  id="report-week-picker"
+                  type="date"
+                  value={selectedWeekDate}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setSelectedWeekDate(e.target.value);
+                    }
+                  }}
+                  className="bg-transparent text-xs text-[#2C1810] font-medium border-l border-[#e8dfd5] pl-1.5 outline-none cursor-pointer w-7"
+                  title="Pick any date to view its week"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleNextWeek}
+                  className="p-1 hover:bg-[#FDFBF7] rounded-full text-[#8B7355] hover:text-[#2C1810] transition-colors cursor-pointer"
+                  title="Next Week"
+                >
+                  <ChevronRight size={14} />
+                </button>
+
+                {!isThisWeek && (
+                  <button
+                    type="button"
+                    onClick={handleResetThisWeek}
+                    className="text-[11px] text-[#8B7355] hover:text-[#2C1810] underline font-medium cursor-pointer ml-1 whitespace-nowrap"
+                  >
+                    This Week
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Monthly Picker */}
+            {activeTab === "monthly" && (
+              <div className="flex items-center gap-1.5 bg-white border border-[#e8dfd5] hover:border-[#D4AF37] transition-all rounded-full px-2.5 py-1.5 shadow-sm text-sm font-semibold text-[#2C1810]">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="p-1 hover:bg-[#FDFBF7] rounded-full text-[#8B7355] hover:text-[#2C1810] transition-colors cursor-pointer"
+                  title="Previous Month"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                <div className="flex items-center gap-1 px-1">
+                  <Calendar size={14} className="text-[#8B7355]" />
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    className="bg-transparent text-xs sm:text-sm font-semibold text-[#2C1810] outline-none cursor-pointer"
+                  >
+                    {MONTH_NAMES.map((name, i) => (
+                      <option key={i} value={i}>{name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={selectedMonthYear}
+                    onChange={(e) => setSelectedMonthYear(Number(e.target.value))}
+                    className="bg-transparent text-xs sm:text-sm font-semibold text-[#2C1810] outline-none cursor-pointer"
+                  >
+                    {YEAR_OPTIONS.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="p-1 hover:bg-[#FDFBF7] rounded-full text-[#8B7355] hover:text-[#2C1810] transition-colors cursor-pointer"
+                  title="Next Month"
+                >
+                  <ChevronRight size={14} />
+                </button>
+
+                {!isThisMonth && (
+                  <button
+                    type="button"
+                    onClick={handleResetThisMonth}
+                    className="text-[11px] text-[#8B7355] hover:text-[#2C1810] underline font-medium cursor-pointer ml-1 whitespace-nowrap"
+                  >
+                    This Month
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Yearly Picker */}
+            {activeTab === "yearly" && (
+              <div className="flex items-center gap-1.5 bg-white border border-[#e8dfd5] hover:border-[#D4AF37] transition-all rounded-full px-2.5 py-1.5 shadow-sm text-sm font-semibold text-[#2C1810]">
+                <button
+                  type="button"
+                  onClick={() => setSelectedYear((y) => y - 1)}
+                  className="p-1 hover:bg-[#FDFBF7] rounded-full text-[#8B7355] hover:text-[#2C1810] transition-colors cursor-pointer"
+                  title="Previous Year"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                <div className="flex items-center gap-1.5 px-1">
+                  <Calendar size={14} className="text-[#8B7355]" />
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="bg-transparent text-xs sm:text-sm font-semibold text-[#2C1810] outline-none cursor-pointer"
+                  >
+                    {YEAR_OPTIONS.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedYear((y) => y + 1)}
+                  className="p-1 hover:bg-[#FDFBF7] rounded-full text-[#8B7355] hover:text-[#2C1810] transition-colors cursor-pointer"
+                  title="Next Year"
+                >
+                  <ChevronRight size={14} />
+                </button>
+
+                {!isThisYear && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedYear(now.getFullYear())}
+                    className="text-[11px] text-[#8B7355] hover:text-[#2C1810] underline font-medium cursor-pointer ml-1 whitespace-nowrap"
+                  >
+                    This Year
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -612,16 +893,75 @@ export default function ReportsView({ orders }: ReportsViewProps) {
             ) : (
               /* Weekly/Monthly/Yearly: proper bar chart with y-axis */
               (() => {
-                const dayMap = new Map<string, number>();
-                completedOrders.forEach(o => {
-                  const d = parseOrderDate(o.createdAt);
-                  const key = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
-                  dayMap.set(key, (dayMap.get(key) || 0) + (o.total || 0));
-                });
-                const entries = Array.from(dayMap.entries()).slice(-14);
-                const max = Math.max(...entries.map(([, v]) => v), 1);
+                let entries: { key: string; label: string; fullLabel: string; val: number }[] = [];
 
-                if (entries.length === 0) {
+                if (activeTab === "weekly") {
+                  // 7 days of the selected week (Mon..Sun)
+                  const cur = new Date(selectedWeekRange.start);
+                  for (let i = 0; i < 7; i++) {
+                    const dayName = cur.toLocaleDateString("en-IN", { weekday: "short" });
+                    const dateNum = cur.getDate();
+                    const monthStr = cur.toLocaleDateString("en-IN", { month: "short" });
+                    entries.push({
+                      key: `w-${i}`,
+                      label: `${dayName} ${dateNum}`,
+                      fullLabel: `${dayName}, ${dateNum} ${monthStr}`,
+                      val: 0,
+                    });
+                    cur.setDate(cur.getDate() + 1);
+                  }
+                  completedOrders.forEach((o) => {
+                    const d = parseOrderDate(o.createdAt);
+                    const diffDays = Math.floor((d.getTime() - selectedWeekRange.start.getTime()) / (24 * 60 * 60 * 1000));
+                    if (diffDays >= 0 && diffDays < 7) {
+                      entries[diffDays].val += (o.total || 0);
+                    }
+                  });
+                } else if (activeTab === "monthly") {
+                  // Days of the selected month
+                  const daysInMonth = new Date(selectedMonthYear, selectedMonth + 1, 0).getDate();
+                  for (let d = 1; d <= daysInMonth; d++) {
+                    entries.push({
+                      key: `m-${d}`,
+                      label: String(d).padStart(2, "0"),
+                      fullLabel: `${d} ${MONTH_NAMES[selectedMonth]} ${selectedMonthYear}`,
+                      val: 0,
+                    });
+                  }
+                  completedOrders.forEach((o) => {
+                    const d = parseOrderDate(o.createdAt);
+                    if (d.getFullYear() === selectedMonthYear && d.getMonth() === selectedMonth) {
+                      const dayNum = d.getDate();
+                      if (dayNum >= 1 && dayNum <= daysInMonth) {
+                        entries[dayNum - 1].val += (o.total || 0);
+                      }
+                    }
+                  });
+                } else {
+                  // Yearly: 12 months of the selected year
+                  for (let m = 0; m < 12; m++) {
+                    entries.push({
+                      key: `y-${m}`,
+                      label: MONTH_NAMES[m].slice(0, 3),
+                      fullLabel: `${MONTH_NAMES[m]} ${selectedYear}`,
+                      val: 0,
+                    });
+                  }
+                  completedOrders.forEach((o) => {
+                    const d = parseOrderDate(o.createdAt);
+                    if (d.getFullYear() === selectedYear) {
+                      const m = d.getMonth();
+                      if (m >= 0 && m < 12) {
+                        entries[m].val += (o.total || 0);
+                      }
+                    }
+                  });
+                }
+
+                const max = Math.max(...entries.map((e) => e.val), 1);
+                const hasAnyData = entries.some((e) => e.val > 0);
+
+                if (!hasAnyData && completedOrders.length === 0) {
                   return <p className="text-xs text-[#8B7355] text-center py-12">No data for this period.</p>;
                 }
 
@@ -629,21 +969,21 @@ export default function ReportsView({ orders }: ReportsViewProps) {
                   <div className="flex gap-2 h-48 mt-2">
                     {/* Y-axis */}
                     <div className="flex flex-col justify-between text-[10px] text-[#8B7355] font-semibold py-1 shrink-0 w-10 text-right">
-                      <span>{max >= 1000 ? `₹${(max/1000).toFixed(1)}K` : `₹${max}`}</span>
-                      <span>{Math.round(max/2) >= 1000 ? `₹${(Math.round(max/2)/1000).toFixed(1)}K` : `₹${Math.round(max/2)}`}</span>
+                      <span>{max >= 1000 ? `₹${(max / 1000).toFixed(1)}K` : `₹${max}`}</span>
+                      <span>{Math.round(max / 2) >= 1000 ? `₹${(Math.round(max / 2) / 1000).toFixed(1)}K` : `₹${Math.round(max / 2)}`}</span>
                       <span>₹0</span>
                     </div>
                     {/* Bars */}
-                    <div className="flex-1 flex items-end gap-1 border-b border-l border-[#e8dfd5] pb-0 pt-2 overflow-x-auto">
-                      {entries.map(([label, val]) => (
-                        <div key={label} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group min-w-[20px]">
+                    <div className="flex-1 flex items-end gap-1 border-b border-l border-[#e8dfd5] pb-0 pt-2 overflow-x-auto vb-scrollbar">
+                      {entries.map((item) => (
+                        <div key={item.key} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group min-w-[16px]">
                           <div
                             className="w-full bg-[#D4AF37] rounded-t-md transition-all group-hover:bg-[#c4a130]"
-                            style={{ height: `${(val / max) * 100}%`, minHeight: val > 0 ? "6px" : "0" }}
-                            title={`${label}: ${rupee(val)}`}
+                            style={{ height: `${(item.val / max) * 100}%`, minHeight: item.val > 0 ? "6px" : "0" }}
+                            title={`${item.fullLabel}: ${rupee(item.val)}`}
                           />
                           <span className="text-[8px] text-[#8B7355] font-semibold whitespace-nowrap">
-                            {label.split(" ")[0]}
+                            {item.label}
                           </span>
                         </div>
                       ))}
@@ -790,7 +1130,10 @@ export default function ReportsView({ orders }: ReportsViewProps) {
                     className="flex items-center gap-1.5 bg-[#2C1810] text-[#fdfbf7] px-3 py-2 rounded-xl text-xs font-semibold hover:bg-black transition-colors cursor-pointer"
                     onClick={() => {
                       const periodLabel = activeTab === "daily" ? (isSelectedToday ? `Today (${selectedDateLabel})` : selectedDateLabel) : tabLabel;
-                      const dateStamp = activeTab === "daily" ? selectedDate : now.toISOString().slice(0, 10);
+                      const dateStamp = activeTab === "daily" ? selectedDate :
+                        activeTab === "weekly" ? selectedWeekDate :
+                        activeTab === "monthly" ? `${selectedMonthYear}-${String(selectedMonth + 1).padStart(2, "0")}` :
+                        String(selectedYear);
                       
                       const lines = [
                         `VELVET BREW - DETAILED OPERATIONS & SALES REPORT`,
