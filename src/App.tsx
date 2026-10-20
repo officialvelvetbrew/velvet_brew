@@ -13,6 +13,7 @@ import CartDrawer from "./components/CartDrawer";
 import CheckoutModal from "./components/CheckoutModal";
 import LegalModal from "./components/LegalModal";
 import CustomerOrdersModal from "./components/CustomerOrdersModal";
+import WhatsAppButton from "./components/WhatsAppButton";
 
 import { COLORS } from "./data/colors";
 import { MENU, CATEGORIES, PROMO_HOT_PRICE } from "./data/menu";
@@ -690,6 +691,8 @@ export default function App() {
         open={ordersOpen}
         onClose={() => setOrdersOpen(false)}
       />
+
+      <WhatsAppButton phone="8399999090" />
     </main>
   );
 }

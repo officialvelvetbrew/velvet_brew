@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Header from '../components/Header';
 import { COLORS } from '../data/colors';
 import { useNavigate } from 'react-router-dom';
+import WhatsAppButton from '../components/WhatsAppButton';
 
 const BLOGS_DATA = [
   {
@@ -78,6 +79,8 @@ export default function Blogs() {
           </div>
         </div>
       )}
+
+      <WhatsAppButton phone="8399999090" />
     </div>
   );
 }
