@@ -36,14 +36,23 @@ export async function getMenu(): Promise<ApiMenuItem[]> {
 }
 
 export async function getCategories(): Promise<ApiCategory[]> {
-    const response = await fetch(`${BASE_URL}/category`);
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const url = token ? `${BASE_URL}/admin/categories` : `${BASE_URL}/category`;
+    let response = await fetch(url, { headers });
+
+    // Fallback to public /category if admin categories fails
+    if (!response.ok && token) {
+        response = await fetch(`${BASE_URL}/category`);
+    }
 
     if (!response.ok) {
         throw new Error("Failed to fetch categories");
     }
 
     const result = await response.json();
-
     return result.data;
 }
 
@@ -77,32 +86,79 @@ export async function updateMenuItem(item: Partial<ApiMenuItem> & { id: number }
     return result.data;
 }
 
-export async function createCategory(category: Omit<ApiCategory, "id">): Promise<ApiCategory> {
+export async function createCategory(category: { name: string; description?: string }): Promise<ApiCategory> {
     const token = getAuthToken();
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const response = await fetch(`${BASE_URL}/category`, {
+    const response = await fetch(`${BASE_URL}/admin/categories`, {
         method: "POST",
         headers,
-        body: JSON.stringify(category),
+        body: JSON.stringify({
+            name: category.name.trim(),
+            description: category.description || "",
+        }),
     });
-    if (!response.ok) throw new Error("Failed to create category");
+    if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.message || `Failed to create category (HTTP ${response.status})`);
+    }
     const result = await response.json();
     return result.data;
 }
 
-export async function updateCategory(category: Partial<ApiCategory> & { id: number }): Promise<ApiCategory> {
+export async function updateCategory(category: { id: number; name?: string; description?: string }): Promise<ApiCategory> {
     const token = getAuthToken();
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const response = await fetch(`${BASE_URL}/category`, {
+    const body: Record<string, any> = {};
+    if (category.name !== undefined) body.name = category.name.trim();
+    if (category.description !== undefined) body.description = category.description;
+
+    const response = await fetch(`${BASE_URL}/admin/categories/${category.id}`, {
         method: "PATCH",
         headers,
-        body: JSON.stringify(category),
+        body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error("Failed to update category");
+    if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.message || `Failed to update category (HTTP ${response.status})`);
+    }
+    const result = await response.json();
+    return result.data;
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(`${BASE_URL}/admin/categories/${id}`, {
+        method: "DELETE",
+        headers,
+    });
+    if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        if (response.status === 409) {
+            throw new Error(errData?.message || "Cannot delete category: Menu items still belong to it. Please delete or reassign them first.");
+        }
+        throw new Error(errData?.message || `Failed to delete category (HTTP ${response.status})`);
+    }
+}
+
+export async function getCategoryById(id: number): Promise<ApiCategory> {
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(`${BASE_URL}/admin/categories/${id}`, {
+        headers,
+    });
+    if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.message || `Failed to fetch category (HTTP ${response.status})`);
+    }
     const result = await response.json();
     return result.data;
 }

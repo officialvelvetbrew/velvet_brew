@@ -6,13 +6,14 @@ import {
   updateMenuItem, 
   createCategory, 
   updateCategory, 
+  deleteCategory,
   uploadMenuImage, 
   replaceMenuItemImage, 
   getPublicImageUrl, 
   ApiMenuItem, 
   ApiCategory 
 } from "../../api/menu";
-import { Search, Plus, Edit2, Package, Tag, Check, X, Upload, Camera, Loader2, Trash2 } from "lucide-react";
+import { Search, Plus, Edit2, Package, Tag, Check, X, Upload, Camera, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 type Tab = "items" | "categories";
 
@@ -32,6 +33,11 @@ export default function MenuPricingView() {
   
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<ApiCategory | null>(null);
+
+  const [catQuery, setCatQuery] = useState("");
+  const [deletingCat, setDeletingCat] = useState<ApiCategory | null>(null);
+  const [isDeletingCat, setIsDeletingCat] = useState(false);
+  const [deleteCatError, setDeleteCatError] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -71,6 +77,39 @@ export default function MenuPricingView() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const categoryItemCounts = useMemo(() => {
+    const counts: Record<number, number> = {};
+    items.forEach((item) => {
+      counts[item.categoryId] = (counts[item.categoryId] || 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
+  const filteredCategories = useMemo(() => {
+    if (!catQuery.trim()) return categories;
+    const q = catQuery.toLowerCase();
+    return categories.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.description && c.description.toLowerCase().includes(q))
+    );
+  }, [categories, catQuery]);
+
+  const handleDeleteCategoryConfirm = async () => {
+    if (!deletingCat) return;
+    try {
+      setIsDeletingCat(true);
+      setDeleteCatError(null);
+      await deleteCategory(deletingCat.id);
+      await loadData();
+      setDeletingCat(null);
+    } catch (err: any) {
+      setDeleteCatError(err.message || "Failed to delete category");
+    } finally {
+      setIsDeletingCat(false);
+    }
+  };
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -239,49 +278,110 @@ export default function MenuPricingView() {
 
             {/* CATEGORIES TAB */}
             {tab === "categories" && (
-              <div className="bg-white border border-[#e8dfd5] rounded-3xl overflow-hidden shadow-sm">
-                <table className="w-full text-left">
-                  <thead className="bg-[#fdfbf7] border-b border-[#e8dfd5]">
-                    <tr>
-                      <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">Category Name</th>
-                      <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">Description</th>
-                      <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">Status</th>
-                      <th className="px-5 py-4 text-right"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#e8dfd5]">
-                    {categories.map((c) => (
-                      <tr key={c.id} className="hover:bg-[#fdfbf7]/50 transition-colors">
-                        <td className="px-5 py-4 text-[14px] font-bold text-[#2C1810]">{c.name}</td>
-                        <td className="px-5 py-4 text-[13px] text-[#8B7355]">{c.description || "-"}</td>
-                        <td className="px-5 py-4">
-                          {c.active ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                              <Check size={12} /> Active
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
-                              <X size={12} /> Inactive
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <button
-                            onClick={() => { setEditingCat(c); setIsCatModalOpen(true); }}
-                            className="inline-flex items-center justify-center p-2 text-[#8B7355] hover:text-[#2C1810] hover:bg-[#e8dfd5] rounded-xl transition-colors"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {categories.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="px-5 py-10 text-center text-[#8B7355]">No categories found.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8B7355]" />
+                    <input
+                      value={catQuery}
+                      onChange={(e) => setCatQuery(e.target.value)}
+                      placeholder="Search categories..."
+                      className="w-full bg-white border border-[#e8dfd5] pl-10 pr-4 py-2.5 rounded-xl text-[14px] text-[#2C1810] focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]"
+                    />
+                  </div>
+                  <div className="text-[13px] font-semibold text-[#8B7355]">
+                    {filteredCategories.length} {filteredCategories.length === 1 ? "category" : "categories"}
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#e8dfd5] rounded-3xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-[#fdfbf7] border-b border-[#e8dfd5]">
+                        <tr>
+                          <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">Category Name</th>
+                          <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">Description</th>
+                          <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">Menu Items</th>
+                          <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">Status</th>
+                          <th className="px-5 py-4 text-right text-[11px] font-bold uppercase tracking-wider text-[#8B7355]">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#e8dfd5]">
+                        {filteredCategories.map((c) => {
+                          const count = categoryItemCounts[c.id] || 0;
+                          return (
+                            <tr key={c.id} className="hover:bg-[#fdfbf7]/50 transition-colors">
+                              <td className="px-5 py-4">
+                                <div className="font-bold text-[14px] text-[#2C1810]">{c.name}</div>
+                                <div className="text-[11px] font-mono text-[#8B7355]">ID: #{c.id}</div>
+                              </td>
+                              <td className="px-5 py-4 text-[13px] text-[#8B7355] max-w-xs">
+                                {c.description ? (
+                                  <span className="line-clamp-2">{c.description}</span>
+                                ) : (
+                                  <span className="italic text-gray-400">No description</span>
+                                )}
+                              </td>
+                              <td className="px-5 py-4">
+                                <span className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1 rounded-lg border ${
+                                  count > 0 
+                                    ? "bg-[#FDFBF7] border-[#e8dfd5] text-[#2C1810]" 
+                                    : "bg-gray-50 border-gray-200 text-gray-400"
+                                }`}>
+                                  <Package size={13} className={count > 0 ? "text-[#D4AF37]" : "text-gray-400"} />
+                                  {count} {count === 1 ? "item" : "items"}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4">
+                                {c.active !== false ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-100 px-2.5 py-0.5 rounded-full">
+                                    <Check size={12} /> Active
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full">
+                                    <X size={12} /> Inactive
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-5 py-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => { setEditingCat(c); setIsCatModalOpen(true); }}
+                                    title="Edit Category"
+                                    className="p-2 text-[#8B7355] hover:text-[#2C1810] hover:bg-[#e8dfd5] rounded-xl transition-colors"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setDeleteCatError(null);
+                                      setDeletingCat(c);
+                                    }}
+                                    title={count > 0 ? "Category has linked items" : "Delete Category"}
+                                    className={`p-2 rounded-xl transition-colors ${
+                                      count > 0 
+                                        ? "text-amber-600/70 hover:text-amber-700 hover:bg-amber-50" 
+                                        : "text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    }`}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {filteredCategories.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="px-5 py-10 text-center text-[#8B7355]">
+                              {catQuery ? "No categories match your search." : "No categories found."}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
           </>
@@ -301,7 +401,116 @@ export default function MenuPricingView() {
         onClose={() => setIsCatModalOpen(false)} 
         category={editingCat} 
         onSave={loadData}
+        onDeleteRequest={(cat) => {
+          setDeleteCatError(null);
+          setDeletingCat(cat);
+        }}
       />
+
+      {/* DELETE CATEGORY CONFIRMATION / CONFLICT MODAL */}
+      {deletingCat && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-[#e8dfd5]">
+            <div className="px-6 py-4 border-b border-[#e8dfd5] flex justify-between items-center bg-[#FDFBF7]">
+              <div className="flex items-center gap-2.5">
+                {(categoryItemCounts[deletingCat.id] || 0) > 0 ? (
+                  <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+                    <AlertTriangle size={18} />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                    <Trash2 size={18} />
+                  </div>
+                )}
+                <h2 className="font-display text-[17px] font-bold text-[#2C1810]">
+                  {(categoryItemCounts[deletingCat.id] || 0) > 0 ? "Cannot Delete Category" : "Delete Category"}
+                </h2>
+              </div>
+              <button 
+                onClick={() => { setDeletingCat(null); setDeleteCatError(null); }} 
+                disabled={isDeletingCat}
+                className="p-1 text-[#8B7355] hover:bg-[#e8dfd5] rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {deleteCatError && (
+                <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-[13px] font-medium leading-relaxed">
+                  {deleteCatError}
+                </div>
+              )}
+
+              {(categoryItemCounts[deletingCat.id] || 0) > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-[14px] text-[#2C1810] leading-relaxed">
+                    Category <span className="font-bold text-[#2C1810]">"{deletingCat.name}"</span> cannot be deleted because it still contains:
+                  </p>
+                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl">
+                    <div className="text-[13px] font-bold text-amber-900 mb-1 flex items-center gap-1.5">
+                      <Package size={14} />
+                      {categoryItemCounts[deletingCat.id]} {categoryItemCounts[deletingCat.id] === 1 ? "Menu Item" : "Menu Items"} Linked
+                    </div>
+                    <p className="text-[12px] text-amber-800 line-clamp-2">
+                      {items
+                        .filter((i) => i.categoryId === deletingCat.id)
+                        .map((i) => i.name)
+                        .slice(0, 5)
+                        .join(", ")}
+                      {(categoryItemCounts[deletingCat.id] || 0) > 5 ? " and more..." : ""}
+                    </p>
+                  </div>
+                  <p className="text-[12px] text-[#8B7355] leading-relaxed">
+                    Backend rules strictly prevent deleting categories while menu items still belong to them (HTTP 409). Please reassign or delete the associated items first.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[14px] text-[#2C1810] leading-relaxed">
+                    Are you sure you want to permanently delete category <span className="font-bold text-[#2C1810]">"{deletingCat.name}"</span>?
+                  </p>
+                  <p className="text-[12px] text-[#8B7355] leading-relaxed">
+                    This action will remove the category from the menu. This cannot be undone.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-[#FDFBF7] border-t border-[#e8dfd5] flex justify-end gap-3">
+              <button 
+                type="button" 
+                onClick={() => { setDeletingCat(null); setDeleteCatError(null); }}
+                disabled={isDeletingCat}
+                className="px-5 py-2.5 rounded-xl font-bold text-[14px] text-[#8B7355] hover:bg-[#e8dfd5] transition-colors"
+              >
+                {(categoryItemCounts[deletingCat.id] || 0) > 0 ? "Close" : "Cancel"}
+              </button>
+
+              {(categoryItemCounts[deletingCat.id] || 0) === 0 && (
+                <button 
+                  type="button" 
+                  onClick={handleDeleteCategoryConfirm}
+                  disabled={isDeletingCat}
+                  className="px-5 py-2.5 rounded-xl font-bold text-[14px] bg-red-600 text-white hover:bg-red-700 shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isDeletingCat ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      Delete Category
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -650,11 +859,22 @@ function ItemModal({ isOpen, onClose, item, categories, onSave }: { isOpen: bool
   );
 }
 
-function CategoryModal({ isOpen, onClose, category, onSave }: { isOpen: boolean; onClose: () => void; category: ApiCategory | null; onSave: () => void; }) {
-  const [formData, setFormData] = useState<Partial<ApiCategory>>({
+function CategoryModal({ 
+  isOpen, 
+  onClose, 
+  category, 
+  onSave,
+  onDeleteRequest,
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  category: ApiCategory | null; 
+  onSave: () => void; 
+  onDeleteRequest?: (cat: ApiCategory) => void;
+}) {
+  const [formData, setFormData] = useState({
     name: "",
     description: "",
-    active: true,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -662,12 +882,14 @@ function CategoryModal({ isOpen, onClose, category, onSave }: { isOpen: boolean;
   useEffect(() => {
     if (isOpen) {
       if (category) {
-        setFormData({ ...category });
+        setFormData({
+          name: category.name || "",
+          description: category.description || "",
+        });
       } else {
         setFormData({
           name: "",
           description: "",
-          active: true,
         });
       }
       setError(null);
@@ -678,15 +900,23 @@ function CategoryModal({ isOpen, onClose, category, onSave }: { isOpen: boolean;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name?.trim()) return setError("Name is required");
+    const trimmedName = formData.name.trim();
+    if (!trimmedName) return setError("Category name is required");
     
     setSubmitting(true);
     setError(null);
     try {
       if (category) {
-        await updateCategory({ ...formData, id: category.id } as any);
+        await updateCategory({ 
+          id: category.id,
+          name: trimmedName,
+          description: formData.description.trim(),
+        });
       } else {
-        await createCategory(formData as any);
+        await createCategory({
+          name: trimmedName,
+          description: formData.description.trim(),
+        });
       }
       onSave();
       onClose();
@@ -698,8 +928,8 @@ function CategoryModal({ isOpen, onClose, category, onSave }: { isOpen: boolean;
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col border border-[#e8dfd5]">
         <div className="px-6 py-4 border-b border-[#e8dfd5] flex justify-between items-center bg-[#FDFBF7]">
           <h2 className="font-display text-[18px] font-bold text-[#2C1810]">
             {category ? "Edit Category" : "New Category"}
@@ -711,50 +941,74 @@ function CategoryModal({ isOpen, onClose, category, onSave }: { isOpen: boolean;
         
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-[13px] font-medium">
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-[13px] font-medium leading-relaxed">
               {error}
             </div>
           )}
           
           <div className="space-y-4">
             <div>
-              <label className="block text-[12px] font-bold uppercase tracking-wider text-[#8B7355] mb-1.5">Name</label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-[12px] font-bold uppercase tracking-wider text-[#8B7355]">
+                  Category Name <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[10px] text-[#8B7355]">Must be unique</span>
+              </div>
               <input 
-                type="text" required
-                value={formData.name || ""} 
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full bg-white border border-[#e8dfd5] px-4 py-2.5 rounded-xl text-[14px] text-[#2C1810] focus:outline-none focus:border-[#D4AF37]"
+                type="text" 
+                required
+                placeholder="e.g. Hot Beverages"
+                value={formData.name} 
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-white border border-[#e8dfd5] px-4 py-2.5 rounded-xl text-[14px] text-[#2C1810] focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]"
               />
             </div>
 
             <div>
-              <label className="block text-[12px] font-bold uppercase tracking-wider text-[#8B7355] mb-1.5">Description</label>
+              <label className="block text-[12px] font-bold uppercase tracking-wider text-[#8B7355] mb-1.5">
+                Description
+              </label>
               <textarea 
-                rows={2}
-                value={formData.description || ""} 
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full bg-white border border-[#e8dfd5] px-4 py-2.5 rounded-xl text-[14px] text-[#2C1810] focus:outline-none focus:border-[#D4AF37] resize-none"
+                rows={3}
+                placeholder="e.g. Freshly brewed artisan coffees and specialty teas"
+                value={formData.description} 
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full bg-white border border-[#e8dfd5] px-4 py-2.5 rounded-xl text-[14px] text-[#2C1810] focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] resize-none"
               />
             </div>
-
-            <label className="flex items-center gap-2 cursor-pointer bg-[#fdfbf7] border border-[#e8dfd5] p-3 rounded-xl hover:border-[#D4AF37] transition-colors">
-              <input 
-                type="checkbox" 
-                checked={formData.active ?? true}
-                onChange={(e) => setFormData({...formData, active: e.target.checked})}
-                className="w-4 h-4 text-[#D4AF37] rounded focus:ring-[#D4AF37]"
-              />
-              <span className="text-[13px] font-bold text-[#2C1810]">Active</span>
-            </label>
           </div>
           
-          <div className="pt-4 border-t border-[#e8dfd5] flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl font-bold text-[14px] text-[#8B7355] hover:bg-[#e8dfd5] transition-colors">
-              Cancel
-            </button>
-            <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl font-bold text-[14px] bg-[#D4AF37] text-[#2C1810] hover:bg-[#c4a130] shadow-sm transition-colors disabled:opacity-50">
-              {submitting ? "Saving..." : "Save"}
-            </button>
+          <div className="pt-4 border-t border-[#e8dfd5] flex items-center justify-between gap-3">
+            {category && onDeleteRequest ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDeleteRequest(category);
+                }}
+                className="inline-flex items-center gap-1.5 text-red-600 hover:text-red-700 text-[13px] font-bold px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                <Trash2 size={15} /> Delete
+              </button>
+            ) : <div />}
+
+            <div className="flex items-center gap-2">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="px-4 py-2 rounded-xl font-bold text-[13px] text-[#8B7355] hover:bg-[#e8dfd5] transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                disabled={submitting} 
+                className="px-5 py-2 rounded-xl font-bold text-[13px] bg-[#D4AF37] text-[#2C1810] hover:bg-[#c4a130] shadow-sm transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {submitting && <Loader2 size={14} className="animate-spin" />}
+                {submitting ? "Saving..." : category ? "Save Changes" : "Create Category"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
