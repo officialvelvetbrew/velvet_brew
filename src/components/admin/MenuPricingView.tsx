@@ -400,6 +400,7 @@ export default function MenuPricingView() {
         isOpen={isCatModalOpen} 
         onClose={() => setIsCatModalOpen(false)} 
         category={editingCat} 
+        existingCategories={categories}
         onSave={loadData}
         onDeleteRequest={(cat) => {
           setDeleteCatError(null);
@@ -863,12 +864,14 @@ function CategoryModal({
   isOpen, 
   onClose, 
   category, 
+  existingCategories = [],
   onSave,
   onDeleteRequest,
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   category: ApiCategory | null; 
+  existingCategories?: ApiCategory[];
   onSave: () => void; 
   onDeleteRequest?: (cat: ApiCategory) => void;
 }) {
@@ -902,6 +905,14 @@ function CategoryModal({
     e.preventDefault();
     const trimmedName = formData.name.trim();
     if (!trimmedName) return setError("Category name is required");
+
+    // Client-side duplicate check (case-insensitive)
+    const duplicate = existingCategories.some(
+      (c) => c.id !== category?.id && c.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (duplicate) {
+      return setError(`A category named "${trimmedName}" already exists. Category names must be unique (case-insensitive).`);
+    }
     
     setSubmitting(true);
     setError(null);
