@@ -91,19 +91,20 @@ export async function createCategory(category: { name: string; description?: str
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
+    const payload: Record<string, any> = {
+        name: category.name.trim(),
+    };
+    if (category.description && category.description.trim()) {
+        payload.description = category.description.trim();
+    }
+
     const response = await fetch(`${BASE_URL}/admin/categories`, {
         method: "POST",
         headers,
-        body: JSON.stringify({
-            name: category.name.trim(),
-            description: category.description || "",
-        }),
+        body: JSON.stringify(payload),
     });
     if (!response.ok) {
         const errData = await response.json().catch(() => null);
-        if (response.status === 409 || errData?.message?.toLowerCase().includes("conflict") || errData?.message?.toLowerCase().includes("already exist")) {
-            throw new Error(`A category named "${category.name.trim()}" already exists. Category names must be unique (case-insensitive).`);
-        }
         throw new Error(errData?.message || `Failed to create category (HTTP ${response.status})`);
     }
     const result = await response.json();
@@ -117,7 +118,9 @@ export async function updateCategory(category: { id: number; name?: string; desc
 
     const body: Record<string, any> = {};
     if (category.name !== undefined) body.name = category.name.trim();
-    if (category.description !== undefined) body.description = category.description;
+    if (category.description !== undefined && category.description.trim()) {
+        body.description = category.description.trim();
+    }
 
     const response = await fetch(`${BASE_URL}/admin/categories/${category.id}`, {
         method: "PATCH",
@@ -126,9 +129,6 @@ export async function updateCategory(category: { id: number; name?: string; desc
     });
     if (!response.ok) {
         const errData = await response.json().catch(() => null);
-        if (response.status === 409 || errData?.message?.toLowerCase().includes("conflict") || errData?.message?.toLowerCase().includes("already exist")) {
-            throw new Error(`A category with this name already exists. Category names must be unique (case-insensitive).`);
-        }
         throw new Error(errData?.message || `Failed to update category (HTTP ${response.status})`);
     }
     const result = await response.json();
